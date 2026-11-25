@@ -1,6 +1,6 @@
 {
   "documents": [
-    { "file": "docs/BRD.md", "type": "business_requirements", "canonical": true, "note": "Nguồn intent duy nhất, đã được chủ dự án duyệt 2026-11-25. KHÔNG sửa." },
+    { "file": "docs/BRD.md", "type": "business_requirements", "canonical": true, "note": "Nguồn intent gốc, đã được chủ dự án duyệt 2026-11-25. KHÔNG tự sửa. LƯU Ý khi validate: SPECIFICATIONS.md § Clarifications C-01..C-13 (chủ dự án duyệt trực tiếp) GHI ĐÈ BRD ở các điểm đó — nhất là C-01: BRD còn ghi Firestore + Firebase Storage, nay là Supabase Postgres + Drizzle + Supabase Storage. Không flag đây là conflict spec-vs-BRD; chờ đồng bộ BRD qua /change." },
     { "file": "BRIEF.md", "type": "other", "canonical": false, "note": "Template trống, bỏ qua." },
     { "file": "docs/DESIGN.md", "type": "design_spec", "canonical": false, "note": "Template chưa điền (placeholder); sẽ được /design điền. Không dùng để validate." },
     { "file": "docs/API_SPEC.md", "type": "api_spec", "canonical": false, "note": "Template boilerplate (JWT/auth/register/users mẫu), chưa có code. Không dùng để validate." },

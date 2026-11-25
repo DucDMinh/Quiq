@@ -1,6 +1,6 @@
 {
   "mode": "maintenance",
-  "activeWorkItem": null,
+  "activeWorkItem": { "type": "start", "slug": "quiq" },
   "features": [],
   "bugs": []
 }

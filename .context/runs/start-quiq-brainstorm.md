@@ -15,7 +15,7 @@ evidence:
   reportPath: docs/specs/2026-11-25-quiq-design.md
   round: 0
   verdict: null
-next: "User duyệt design doc (reply ok) → step 3 design (/design: tokens + screen specs, chốt thư viện UI) → ⏸ confirm tokens → step 4 graph"
+next: "User duyệt design doc (reply ok) + quyết có đồng bộ BRD không → step 3 design (/design: tokens + screen specs, chốt thư viện UI) → ⏸ confirm tokens → step 4 graph. LAYER 0 PHẢI KIỂM: (1) Supabase direct host có thể chỉ IPv6 → mạng nhà IPv4 cần chuỗi pooler Supavisor; pooler transaction-mode phải tắt prepared statements ở driver; (2) SSE qua Next rewrite có thể bị buffer → spike sớm; (3) thêm .gitattributes eol=lf (autocrlf đang bật); (4) tools/ (có progress-write.mjs) biến mất khỏi đĩa — tìm hoặc dựng lại trước khi loop merge; (5) điền verify commands + chạy apply-verify-permissions --write."
 loopSignal: none
 approvals: []
 batchQueue: []

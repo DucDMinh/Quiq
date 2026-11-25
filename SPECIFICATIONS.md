@@ -63,7 +63,7 @@ Chỉ có 4 vai trò hệ thống (không có vai trò nào khác):
 
 ### Module 2 — Admin trường
 - **FR-010** (High): Tạo tài khoản + đặt lại mật khẩu giáo viên; mỗi giáo viên gắn đúng 1 môn (chọn từ danh sách môn FR-018), không đổi được; không tự đăng ký.
-- **FR-011** (High): Nhập danh sách học sinh từ file; mỗi dòng: mã, họ tên, lớp, ngày sinh, quê quán, SĐT người giám hộ, địa chỉ, tên người giám hộ. Mã duy nhất trong 1 trường (trùng → báo lỗi); 2 trường được trùng mã. Định dạng file: **[cần xác nhận]** (Excel/CSV).
+- **FR-011** (High): Nhập danh sách học sinh từ file; mỗi dòng: mã, họ tên, lớp, ngày sinh, quê quán, SĐT người giám hộ, địa chỉ, tên người giám hộ. Mã duy nhất trong 1 trường (trùng → báo lỗi); 2 trường được trùng mã. Định dạng file: `.xlsx`, nhập theo kiểu cả file hoặc không (đề xuất trong design doc, chờ duyệt).
 - **FR-012** (High): Lớp gắn năm học; mỗi năm tạo lớp, nhập khóa mới, chuyển học sinh cũ lên lớp mới. Giữ lịch sử học sinh–lớp–năm (BR-018). Học sinh chuyển trường = xóa dữ liệu ở trường cũ + nhập mới ở trường mới, không chuyển dữ liệu giữa hai trường (C-09).
 - **FR-013** (High): Phân công giáo viên ↔ lớp ↔ năm học; môn = môn của giáo viên. Quyền xem của giáo viên bám theo phân công (FR-060).
 - **FR-014** (High): Thiết lập chung toàn trường: số lần làm bài tối đa (mặc định 3), số lần cảnh báo gian lận (mặc định 2), và ngưỡng gián đoạn (mặc định 60 giây — C-06). Đổi chỉ áp dụng cho lớp được phát đề sau đó; mỗi lớp giữ giá trị tại thời điểm lớp đó được phát đề (C-04).

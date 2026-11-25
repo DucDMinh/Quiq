@@ -84,6 +84,7 @@ Giáo viên cấu hình tổng/dễ/TB/khó → Koa đếm ngân hàng theo mứ
 - **Heartbeat 5 giây** (kèm câu trả lời chưa lưu): cập nhật `last_heartbeat_at`, trả về trạng thái phiên. Phiên bị thu hồi → trả `kicked` → trình duyệt đăng xuất ngay (FR-043 trong thời gian ≤ 5 giây).
 - **Lưu đáp án** mỗi lần chọn (PUT theo câu) để chấm đúng khi gián đoạn hoặc tự nộp.
 - **Sweeper 10 giây**: attempt `in_progress` có `now > ends_at` → tự nộp, chấm; có `last_heartbeat_at < now - interrupt_secs` → `interrupted`, chấm, lượt đã tiêu. Khi học sinh vào lại, Koa cũng kiểm lười (lazy) cùng điều kiện.
+- Học sinh **không thấy điểm** của attempt `interrupted` (giáo viên thấy). Đẩy máy khi học sinh mới chỉ ở **phòng chờ** (chưa có attempt) thì không tiêu hao lượt nào, chỉ ghi `takeover_logs`.
 - **Quay lại trong ngưỡng** (C-13): còn cookie `quiq_stu` và attempt `in_progress` → làm tiếp, không mất lượt, đồng hồ không dừng.
 - **Đổi máy** (C-13, C-02, C-03): nhập mã học sinh ở trình duyệt không có token trong khi đang có phiên → tạo phiên mới, thu hồi phiên cũ, attempt cũ → `interrupted` (mất 1 lượt, kể cả lượt cuối), ghi `takeover_logs`; máy mới vào **phòng chờ**, bấm "Bắt đầu làm bài" để làm lần mới.
 - **Thu bài** (FR-034): attempt `in_progress` của lớp → `completed` (tự nộp, chấm); attempt `interrupted` giữ điểm cao nhất đã chấm; lớp `closed` không cho Bắt đầu nữa.
@@ -120,7 +121,7 @@ SSE `GET /api/teacher/exams/:id/classes/:cid/stream`: gửi ảnh chụp trạng
 - **Unit (Vitest)**: chấm điểm (đúng/thiếu/thừa/bỏ trống/làm tròn), rút đề theo mức khó (đủ/thiếu), trộn câu và đáp án (hoán vị đúng, ánh xạ về đáp án gốc), máy trạng thái attempt, tính điểm chính thức.
 - **Integration (Vitest + PGlite chạy migration thật)**: cô lập trường (người của trường A không đọc được B ở **mọi** route — test tự quét router), admin tổng không có route dữ liệu riêng, phạm vi giáo viên theo lớp/môn/năm, chỉ một attempt `in_progress` mỗi học sinh, đẩy máy + nhật ký, gián đoạn và hết giờ qua sweeper (đồng hồ giả), giới hạn số lần làm, snapshot theo lớp, thu bài, chấm lại, xóa dữ liệu cá nhân (mã không cấp lại), tra cứu chỉ bài đã công bố và không có PII.
 - **E2E (Playwright, smoke)**: một luồng đầy đủ — giáo viên ra đề, phát đề, hai học sinh vào phòng chờ và làm bài, nộp, công bố, tra cứu. Chạy trên môi trường local với DB staging riêng, không chạy song song.
-- **Bảo mật**: test xác nhận payload làm bài không chứa `is_correct`; anon key không đọc được bảng nào (RLS).
+- **Bảo mật**: test xác nhận payload làm bài không chứa `is_correct` (PGlite). Việc "anon key không đọc được bảng nào" (RLS) cần vai trò Supabase nên kiểm ở smoke trên project staging, không chạy trên PGlite.
 - Lệnh verify thật được điền vào `project-config.md` ở Layer 0 khi scaffold xong.
 
 ## Dự kiến chia layer (để `/graph` tinh chỉnh)
