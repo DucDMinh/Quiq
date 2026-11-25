@@ -1,0 +1,11 @@
+{
+  "documents": [
+    { "file": "docs/BRD.md", "type": "business_requirements", "canonical": true, "note": "Nguồn intent duy nhất, đã được chủ dự án duyệt 2026-11-25. KHÔNG sửa." },
+    { "file": "BRIEF.md", "type": "other", "canonical": false, "note": "Template trống, bỏ qua." },
+    { "file": "docs/DESIGN.md", "type": "design_spec", "canonical": false, "note": "Template chưa điền (placeholder); sẽ được /design điền. Không dùng để validate." },
+    { "file": "docs/API_SPEC.md", "type": "api_spec", "canonical": false, "note": "Template boilerplate (JWT/auth/register/users mẫu), chưa có code. Không dùng để validate." },
+    { "file": "docs/ERD.md", "type": "database_schema", "canonical": false, "note": "Template boilerplate (Postgres/Prisma mẫu), project dùng Firestore. Không dùng để validate." },
+    { "file": "docs/PERMISSION.md", "type": "business_rules", "canonical": false, "note": "Template (USER/ADMIN mẫu); vai trò thật theo BRD: Admin tổng / Admin trường / Giáo viên / Học sinh. Không dùng để validate." }
+  ],
+  "entry_mode": "partial_docs"
+}
