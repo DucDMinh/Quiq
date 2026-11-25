@@ -28,6 +28,16 @@ batchQueue: []
 - Việc còn treo: spec-publisher bump spec_version (1.0.0 → 1.1.0?) khi chốt; đồng bộ BRD qua /change (BRD còn nói Firebase).
 - docs/{ERD,API_SPEC,PERMISSION,DESIGN}.md còn là template: cần dọn ở step design/graph.
 
+## Step 3 design (2026-11-25, chạy bằng /design, session chính)
+
+- Reference: `index.html` (prototype, tím #46178f, 6.551 dòng). Đã viết `skills/react-nodejs/design-tokens.md`, `.context/design-spec.md`, thay `docs/DESIGN.md` bằng trang trỏ.
+- Sửa so với prototype: focus ring vàng (1.6:1) → tím; bỏ nhánh mobile; bỏ tài khoản/nút giả lập; em-dash; CSV → xlsx (D-1..D-11 trong design-spec §2).
+- archify: bỏ qua, cần `npx skills add tt-a1i/archify` (tải gói ngoài), chưa được yêu cầu. Không bắt buộc.
+- User ĐÃ CHỐT (2026-11-25): D-1 đổi bảng màu → A teal `#0f766e` + chữ cái A B C D (bỏ 4 hình); D-3 xlsx+csv; D-4 giữ đánh dấu xem lại; D-6 2 đến 4 đáp án; D-11 một hệ thiết kế. User yêu cầu: HỎI/CHỐT TRƯỚC rồi mới ghi doc (đã ghi bản DRAFT trước khi chốt, lần sau không làm vậy).
+- Tokens + design-spec đã cập nhật theo bảng màu teal, contrast đã đo.
+- Chưa commit design files + index.html + tools/ (tools/ chưa nằm trong git); chưa hỏi user.
+- next: chờ ok cuối của user → step 4 graph (`/graph`).
+
 ## History
 
 - 2026-11-25T17:10 design doc viết xong, git init (staging), config + models ghi xong.

@@ -1,6 +1,12 @@
 {
   "mode": "maintenance",
-  "activeWorkItem": { "type": "start", "slug": "quiq" },
+  "activeWorkItem": {
+    "type": "start",
+    "slug": "quiq"
+  },
   "features": [],
-  "bugs": []
+  "bugs": [],
+  "currentLayer": 0,
+  "totalLayers": 4,
+  "lastUpdated": "2026-11-25T10:48:41.263Z"
 }
