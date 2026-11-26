@@ -17,7 +17,7 @@ Layer-plan diagram: **skipped (archify chưa cài, cần tải gói ngoài)**.
 | Layer | Task | Chạy song song? | Bạn thử được gì |
 |---|---|---|---|
 | 0 | 01 Khung monorepo + `pnpm dev` + dependency + lệnh verify | không | Mở `localhost:3000`, `/api/health` trả ok |
-| 1 | 01 DB nền + migration + seed (Supabase) · 02 Exam engine · 03 Web nền (tokens teal, UI chung) | cả 3 | Có dữ liệu mẫu trong Supabase; xem `/_ui` |
+| 1 | 01 DB nền + migration + seed (Supabase) · 02 Exam engine · 03 Web nền (tokens teal, UI chung) · **04 Điểm nối API (deps db/clock, `createTestApp`, `/api/health/db`)** | 01 đến 03 song song; 04 bổ sung sau checkpoint, chạy một mình trước Layer 2 | Có dữ liệu mẫu trong Supabase; xem `/_ui`; `/api/health/db` kiểm kết nối |
 | 2 | 01 Đăng nhập cán bộ + khung giao diện giáo viên · 02 Luồng học sinh trọn vẹn (vào thi, phòng chờ, làm, nộp, điểm) | song song | Học sinh thi bài `DEMO01` bằng `HS001`; giáo viên đăng nhập `gv.toan` |
 | 3 | 01 Ngân hàng câu hỏi · 02 Tạo bài thi + Phát đề + Thu bài + roster | song song | **Luồng demo trọn vẹn** |
 

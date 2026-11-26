@@ -22,6 +22,7 @@ Web:
 
 ## Dependencies
 - layer-1-task-01 (bảng `staff_accounts`, `sessions`, seed, `hashPassword/verifyPassword`)
+- layer-1-task-04 (điểm nối API: `deps.db`, `deps.clock`, `createTestApp()`)
 - layer-1-task-03 (thành phần UI, api-client)
 
 ## Acceptance Criteria
@@ -53,4 +54,5 @@ Web:
 - Chỉ `apps/web/src/app/giao-vien/layout.tsx` và `page.tsx` được tạo trong thư mục `giao-vien` ở layer này; L3 thêm `ngan-hang/` và `bai-thi/`, `phong-thi/` ở thư mục con riêng nên không trùng file.
 - `server.ts` có thể cần nối `SESSION_SECRET`/thời gian; nếu phải sửa `apps/api/src/server.ts` hay `app.ts` thì khai vào Files (L2-02 **không** sửa hai file này).
 - Hash password và hằng số 8 giờ: dùng `@quiq/db/security`; không viết lại.
+- Truy cập DB và thời gian qua `deps` (module `routes.ts` nhận `(router, deps)`), test tích hợp dùng `createTestApp()`; không dùng `new Date()`/`Date.now()` trong code nghiệp vụ, dùng `deps.clock.now()`.
 - Risk đỏ: auth/phiên/tenant → Reviewer STRICT.

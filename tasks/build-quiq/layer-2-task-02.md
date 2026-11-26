@@ -27,6 +27,7 @@ Web (`apps/web/src/app/thi/...`, `apps/web/src/features/student/`), đúng `.con
 
 ## Dependencies
 - layer-1-task-01 (DB, seed `DEMO01`/`HS001`)
+- layer-1-task-04 (điểm nối API: `deps.db`, `deps.clock`, `createTestApp()`)
 - layer-1-task-02 (engine)
 - layer-1-task-03 (thành phần UI, api-client)
 
@@ -59,4 +60,6 @@ Web (`apps/web/src/app/thi/...`, `apps/web/src/features/student/`), đúng `.con
 - **Chưa làm (tính năng sau, đừng làm ở đây):** heartbeat, sweeper nền, vi phạm rời tab/toàn màn hình, gián đoạn/làm lại, đẩy máy, SSE, công bố đáp án, ảnh, "Đánh dấu xem lại".
 - Chỉ L2-02 sửa `apps/api/src/modules/student/`, `attempts/`; L2-01 sở hữu `auth/` và `http/guards.ts` (đừng sửa). Không đụng `server.ts`/`app.ts` (module loader tự nạp).
 - Vi phạm quy tắc "đáp án chỉ ở máy chủ" là lỗi chặn: reviewer phải kiểm payload thật.
+- Truy cập DB và thời gian qua `deps` (`routes.ts` nhận `(router, deps)`), test dùng `createTestApp()` với đồng hồ giả; `ends_at`, hết giờ, dung sai 3 giây đều tính theo `deps.clock.now()`.
+- **Ghi nhận từ review Layer 1 (phải xử lý ở task này):** (1) `student_sessions` không hết hạn và chỉ mục cho phép MỘT phiên còn hiệu lực mỗi học sinh trên toàn hệ thống: phải thu hồi phiên học sinh khi nộp bài/hết giờ/thu bài (hoặc đặt TTL), nếu không bài thi sau sẽ bị coi nhầm là đổi máy; (2) chuẩn hóa mã bài thi và mã học sinh (trim, không phân biệt hoa thường theo cách thống nhất với DB) trước khi tra; (3) API phải kiểm câu thuộc đúng đề của attempt khi lưu đáp án (DB chưa ràng buộc `attempt_answers` cùng exam).
 - Risk đỏ: attempt/payload đáp án/phiên học sinh → Reviewer STRICT.
