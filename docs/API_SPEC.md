@@ -2,7 +2,7 @@
 
 > Overview + pointer tới source of truth. **Không chép schema tay vào đây**: chi tiết request/response lấy từ code.
 > Overview này khác code → **code thắng**, sửa lại overview.
-> Cập nhật lần cuối: close-out Layer 3 (2026-11-26).
+> Cập nhật lần cuối: close-out Layer 4 (2026-11-26).
 
 ## Source of truth
 
@@ -131,11 +131,20 @@ Mọi route: `staffGuard(deps, ["teacher"])`; bài thi/lớp của giáo viên k
 | `DELETE /api/teacher/exams/:id` | | `{ id }` | 409 `EXAM_HAS_ATTEMPTS`, 404 |
 | `POST /api/teacher/exams/:examId/classes/:classId/dispatch` | | `ExamClassState` (snapshot `max_attempts/warn_limit/interrupt_secs` từ trường) | 409 `CLASS_ALREADY_DISPATCHED`, `CLASS_ALREADY_CLOSED`, 404 |
 | `POST .../classes/:classId/close` | | `CloseClassResult { examClass, finalizedAttempts }`; **idempotent** (lớp đã thu bài: chạy lại thu hồi phiên + chấm, 200) | 409 `CLASS_NOT_DISPATCHED` (lớp nháp), 404 |
-| `GET .../classes/:classId/roster` | | `RosterView { examClass, students[{code, fullName, status: not_started\|waiting\|in_progress\|submitted, attemptsUsed, bestScore}], counts, serverNow }` (polling 3 giây) | 404 |
+| `GET .../classes/:classId/roster` | | `RosterView { examClass, students[{code, fullName, status: not_started\|waiting\|in_progress\|submitted, attemptsUsed, bestScore, interrupted}], counts, serverNow }`. **Có ghi:** trước khi tính, tự nộp attempt `in_progress` đã quá `ends_at + 3s` với `endReason=timeout` (G-12) | 404 |
+| `GET .../classes/:classId/stream` | `Accept: text/event-stream` | 200 SSE (xem dưới) | 401, 404 trả **JSON** (kiểm quyền + ảnh chụp đầu chạy trước khi mở luồng) |
+
+**Stream SSE (`modules/class-control/stream.ts`, Layer 4):**
+- Header: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`, `Connection: keep-alive`, `X-Accel-Buffering: no` (đo qua rewrite Next dev: ≤ 6 ms, không nén).
+- Mở đầu comment `: open`, rồi `event: roster` (`ROSTER_STREAM_EVENT`, `@quiq/shared/exams`) với `data` = `RosterView` JSON. Gửi lại khi lớp đổi (gộp ~250 ms) và mỗi ~10 giây (để "Đang chờ" hết hạn), kèm comment `: keepalive`.
+- **Trước mỗi lần đẩy kiểm lại phiên giáo viên** (`createSessionCheck`, `http/guards.ts`): phiên bị thu hồi / hết hạn 8 giờ, tài khoản tắt, trường khóa, hoặc mất quyền với lớp → server đóng luồng (không gửi sự kiện lỗi). Lần kiểm **không gia hạn** phiên: chỉ mở SSE thì phiên vẫn hết sau 8 giờ.
+- Đệm chưa gửi > 1 MB (client chậm) → cắt kết nối.
+- Đo trên Supabase staging: sự kiện tới ~0,8-0,9 giây sau khi request gây đổi trả về (gộp 250 ms + truy vấn kiểm phiên + tính roster).
+- `RosterStudent.interrupted`: true khi có attempt `interrupted` (Layer 7 mới sinh, hiện luôn false).
 
 Quy tắc:
 - Tạo đề: `drawQuestions` (engine) + sao chép câu/đáp án vào `exam_questions`/`exam_options` + tạo `exam_classes` (`draft`) trong **một transaction**. Mã bài thi 6 ký tự, bỏ `0 O 1 I L`, duy nhất toàn hệ thống (kiểm trước + retry khi trùng `exams_code_key`).
-- Thu bài: (1) đóng lớp, (2) thu hồi mọi phiên học sinh của lớp với `revoked_at = closed_at`, (3) `finalizeAttempt(…, "closed")` mọi attempt `in_progress`.
+- Thu bài: (1) đóng lớp, (2) thu hồi mọi phiên học sinh của lớp với `revoked_at = closed_at`, (3) `finalizeAttempt` mọi attempt `in_progress`: đã quá `ends_at + 3s` → `endReason=timeout`, còn giờ → `closed` (G-12).
 - "Đang chờ" = có presence trong 15 giây (`WAITING_PRESENCE_FRESH_SECONDS`, `@quiq/shared/student`), bỏ qua khi lớp đã thu bài.
 
 ## Mã lỗi

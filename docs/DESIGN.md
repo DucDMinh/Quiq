@@ -12,7 +12,7 @@
 | Hợp đồng API as-built | `docs/API_SPEC.md` |
 | Gap code ↔ intent | `docs/changes/TECHNICAL_REQUIREMENT_GAPS.md` |
 
-## Current state (as-built, sau Layer 3, 2026-11-26)
+## Current state (as-built, sau Layer 4, 2026-11-26)
 
 ### API (Koa, `apps/api`)
 - `createApp({ deps })` (`src/app.ts`): middleware `errorMiddleware → bodyParser → router`; module loader nạp `src/modules/*/routes.ts`, mỗi module nhận `(router, deps)`.
@@ -47,3 +47,11 @@
 - Cán bộ: `/dang-nhap`, khung `AppShell` (`src/features/shell/app-shell.tsx`); **`src/features/shell/nav-config.ts` là chỗ duy nhất** để layer sau thêm mục menu; dialog "Phiên đăng nhập đã hết hạn".
 - Học sinh: `/thi`, `/thi/[code]`, `/phong-cho`, `/lam-bai`, `/ket-qua` (`src/features/student/`).
 - Chỉ desktop (`MinWidthGuard` ở root layout).
+
+### Theo dõi trực tiếp (Layer 4)
+- **SSE hub trong tiến trình** (`apps/api/src/realtime/hub.ts`, gắn qua `deps.realtime?`): `publish(examClassId)` chỉ báo "lớp đổi", không mang dữ liệu. Điểm phát tín hiệu, **luôn sau commit**: presence phòng chờ mới/quay lại (`touchPresence`), Bắt đầu, `finalizeAttempt` (nộp, hết giờ, thu bài), phát đề, thu bài.
+- Stream (`modules/class-control/stream.ts`) nhận tín hiệu thì kiểm lại phiên giáo viên rồi tính lại `getRoster` (một nguồn sự thật với `GET roster`) và đẩy `event: roster`; nhịp ~10 giây để presence hết hạn. Dọn listener + interval + timer gộp khi client ngắt, server lỗi, phiên hỏng hoặc đệm > 1 MB.
+- Web (`features/class-control/use-roster.ts`): `EventSource` → huy hiệu "Trực tiếp"; watchdog 5 giây (chưa có ảnh chụp đầu) / 25 giây (im lặng) hoặc lỗi → polling 3 giây, huy hiệu "Đang kết nối lại", thử lại SSE sau 10 giây; chỉ một nguồn dữ liệu tại một thời điểm.
+- Phiên hỏng khi đang theo dõi: server đóng luồng → client polling → `GET roster` 401 → dialog hết phiên; 403 `SCHOOL_LOCKED` → Alert lỗi, bảng giữ ảnh chụp cuối.
+- Giới hạn: hub một tiến trình (G-15), chưa giới hạn số kết nối SSE (G-16); học sinh vẫn polling `state` 3 giây (SSE chỉ cho giáo viên).
+- `GET roster` không còn chỉ đọc: kiểm hết giờ lười cho bài quá `ends_at + 3s` (G-12).
