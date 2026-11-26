@@ -2,6 +2,7 @@ import { createTestDb, type TestDb } from "@quiq/db/testing";
 import type Koa from "koa";
 import { createApp } from "../app";
 import type { SessionConfig } from "../http/deps";
+import { createRealtimeHub, type RealtimeHub } from "../realtime/hub";
 import { createTestClock, type TestClock } from "./test-clock";
 
 export interface CreateTestAppOptions {
@@ -9,6 +10,8 @@ export interface CreateTestAppOptions {
   modulesDir?: string;
   /** Cấu hình phiên cán bộ; mặc định TEST_SESSION_CONFIG (khóa cố định, cookie không Secure). */
   session?: SessionConfig;
+  /** Hub SSE; mặc định hub thật với nhịp mặc định. Test stream truyền nhịp ngắn để không phải chờ thật. */
+  realtime?: RealtimeHub;
 }
 
 /** Khóa phiên chỉ dùng trong test; server thật đọc SESSION_SECRET từ môi trường. */
@@ -22,6 +25,7 @@ export interface TestApp {
   app: Koa;
   db: TestDb;
   clock: TestClock;
+  realtime: RealtimeHub;
   /** Đóng PGlite; gọi trong afterEach/afterAll. */
   close: () => Promise<void>;
 }
@@ -35,12 +39,13 @@ export interface TestApp {
 export async function createTestApp(options: CreateTestAppOptions = {}): Promise<TestApp> {
   const testDb = await createTestDb();
   const clock = createTestClock();
+  const realtime = options.realtime ?? createRealtimeHub();
   try {
     const app = await createApp({
-      deps: { db: testDb.db, clock, session: options.session ?? TEST_SESSION_CONFIG },
+      deps: { db: testDb.db, clock, session: options.session ?? TEST_SESSION_CONFIG, realtime },
       modulesDir: options.modulesDir,
     });
-    return { app, db: testDb.db, clock, close: testDb.close };
+    return { app, db: testDb.db, clock, realtime, close: testDb.close };
   } catch (error) {
     await testDb.close();
     throw error;

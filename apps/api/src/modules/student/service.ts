@@ -11,7 +11,12 @@ import {
   waitingPresence,
   type DatabaseLike,
 } from "@quiq/db";
-import type { ClosedReason, StudentPhase, StudentStateView } from "@quiq/shared/student";
+import {
+  WAITING_PRESENCE_FRESH_SECONDS,
+  type ClosedReason,
+  type StudentPhase,
+  type StudentStateView,
+} from "@quiq/shared/student";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { AppDeps } from "../../http/deps";
 import { AppError } from "../../http/errors";
@@ -202,7 +207,10 @@ export function derivePhase(input: PhaseInput): {
   return { phase: "can_start", closedReason: null };
 }
 
-async function touchPresence(db: DatabaseLike, session: StudentSession, now: Date): Promise<void> {
+// Trả true khi học sinh vừa (lại) vào phòng chờ (chưa có dấu / dấu đã cũ): chỉ lúc đó bảng giáo viên đổi.
+async function touchPresence(db: DatabaseLike, session: StudentSession, now: Date): Promise<boolean> {
+  const own = and(eq(waitingPresence.examClassId, session.examClassId), eq(waitingPresence.studentId, session.studentId));
+  const [previous] = await db.select({ seen: waitingPresence.lastSeenAt }).from(waitingPresence).where(own);
   await db
     .insert(waitingPresence)
     .values({
@@ -215,6 +223,7 @@ async function touchPresence(db: DatabaseLike, session: StudentSession, now: Dat
       target: [waitingPresence.examClassId, waitingPresence.studentId],
       set: { lastSeenAt: now },
     });
+  return !previous || now.getTime() - previous.seen.getTime() > WAITING_PRESENCE_FRESH_SECONDS * 1000;
 }
 
 async function loadClassAttempts(db: DatabaseLike, session: StudentSession) {
@@ -252,8 +261,10 @@ export async function getStudentState(
   });
 
   const now = deps.clock.now();
-  if (session.active && (phase === "waiting" || phase === "can_start"))
-    await touchPresence(deps.db, session, now);
+  if (session.active && (phase === "waiting" || phase === "can_start")) {
+    const appeared = await touchPresence(deps.db, session, now);
+    if (appeared) deps.realtime?.publish(session.examClassId);
+  }
 
   const current = attemptRows.find((a) => a.status === "in_progress" || a.status === "submitted");
   return {

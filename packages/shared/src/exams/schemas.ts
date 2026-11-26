@@ -160,6 +160,8 @@ export interface RosterStudent {
   attemptsUsed: number;
   /** Điểm cao nhất trong các lần đã nộp; null khi chưa nộp lần nào. */
   bestScore: number | null;
+  /** Có lần làm bị gián đoạn (Layer 7 mới sinh trạng thái này; tới đó luôn false). */
+  interrupted: boolean;
 }
 
 export interface RosterView {
@@ -168,6 +170,9 @@ export interface RosterView {
   counts: Record<RosterStatus, number>;
   serverNow: string;
 }
+
+/** Tên sự kiện SSE của GET .../stream; dữ liệu là một `RosterView` đầy đủ (JSON). */
+export const ROSTER_STREAM_EVENT = "roster";
 
 export interface CloseClassResult {
   examClass: ExamClassState;

@@ -172,6 +172,7 @@ function rosterOf(status: "draft" | "dispatched", inProgress: number): RosterVie
         status: inProgress > 0 ? "in_progress" : "submitted",
         attemptsUsed: 1,
         bestScore: inProgress > 0 ? null : 7.5,
+        interrupted: false,
       },
     ],
     counts: { not_started: 0, waiting: 0, in_progress: inProgress, submitted: inProgress > 0 ? 0 : 1 },

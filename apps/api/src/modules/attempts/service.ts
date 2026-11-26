@@ -136,6 +136,7 @@ async function buildPaper(deps: AppDeps, attempt: AttemptRow): Promise<ExamPaper
 export async function startAttempt(deps: AppDeps, session: StudentSession): Promise<ExamPaperView> {
   await expireDueAttempts(deps, session.studentId);
   const attempt = await startAttemptRow(deps, session, loadPaperQuestions);
+  deps.realtime?.publish(attempt.examClassId);
   return buildPaper(deps, attempt);
 }
 

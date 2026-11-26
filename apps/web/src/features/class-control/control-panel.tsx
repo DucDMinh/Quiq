@@ -18,8 +18,8 @@ import {
   useToast,
 } from "@/components/ui";
 import { toApiError, useExams } from "@/features/exams/use-exams";
-import { RosterTable } from "./roster-table";
-import { classControlApi, useRoster, type ExamClassTarget } from "./use-roster";
+import { ConnectionBadge, RosterTable } from "./roster-table";
+import { classControlApi, useRoster, type ExamClassTarget, type RosterConnection } from "./use-roster";
 
 type PendingAction = "dispatch" | "close";
 
@@ -37,7 +37,7 @@ export function ControlPanel({ initialExamId }: ControlPanelProps) {
   const examClass = exam?.classes.find((c) => c.classId === classId) ?? exam?.classes[0] ?? null;
   const target: ExamClassTarget | null =
     exam && examClass ? { examId: exam.id, classId: examClass.classId } : null;
-  const { roster, error: rosterError, reload } = useRoster(target);
+  const { roster, error: rosterError, connection, reload } = useRoster(target);
 
   if (examsError) {
     return (
@@ -79,7 +79,7 @@ export function ControlPanel({ initialExamId }: ControlPanelProps) {
         }}
       />
       {rosterError ? <Alert tone="danger">{rosterError.message}</Alert> : null}
-      <RosterSection roster={roster} />
+      <RosterSection roster={roster} connection={connection} />
     </div>
   );
 }
@@ -258,11 +258,14 @@ function ConfirmActionDialog({ action, target, className, inProgress, onClose, o
   );
 }
 
-function RosterSection({ roster }: { roster: RosterView | null }) {
+function RosterSection({ roster, connection }: { roster: RosterView | null; connection: RosterConnection }) {
   const loading = roster === null;
   const counts = roster?.counts;
   return (
     <>
+      <div className="flex justify-end" aria-live="polite">
+        <ConnectionBadge connection={connection} />
+      </div>
       <div className="grid grid-cols-4 gap-4">
         <KpiCard label="Đang chờ" tone="warning" value={counts?.waiting ?? 0} loading={loading} />
         <KpiCard label="Đang làm" tone="info" value={counts?.in_progress ?? 0} loading={loading} />
