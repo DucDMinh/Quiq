@@ -64,6 +64,22 @@ export function authenticate(deps: AppDeps): Middleware {
   };
 }
 
+/**
+ * Kiểm lại phiên của request hiện tại cho kết nối sống lâu (SSE), gọi sau `authenticate`: cùng điều kiện
+ * (phiên chưa thu hồi/hết hạn, tài khoản hoạt động, trường không khóa, đúng phiên lúc mở) nhưng KHÔNG gia hạn,
+ * để luồng mở không tự giữ phiên sống quá 8 giờ. Hàm trả về chỉ nói đúng/sai; người gọi tự đóng kết nối.
+ */
+export function createSessionCheck(deps: AppDeps, ctx: Context): () => Promise<boolean> {
+  const { sessionId } = currentStaff(ctx);
+  const token = readSessionToken(ctx);
+  const tokenHash = token ? hashSessionToken(token, requireSessionConfig(deps).secret) : null;
+  return async () => {
+    if (!tokenHash) return false;
+    const session = await findActiveSession(deps.db, tokenHash, deps.clock.now());
+    return !!session && session.sessionId === sessionId && session.staffActive && !session.schoolLocked;
+  };
+}
+
 export function currentStaff(ctx: Context): StaffContext {
   const staff = ctx.state.staff as StaffContext | undefined;
   // Lỗi lập trình (quên authenticate trước): thành 500, không lặng lẽ cho qua.

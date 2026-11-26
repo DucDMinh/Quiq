@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createApp } from "./app";
 import { loadConfig } from "./config";
 import { systemClock } from "./http/deps";
+import { createRealtimeHub } from "./realtime/hub";
 import { createShutdown } from "./shutdown";
 
 // Biến môi trường dev nằm ở .env.local của thư mục gốc repo; biến đã có sẵn trong shell được ưu tiên.
@@ -30,7 +31,9 @@ async function main(): Promise<void> {
   // Thiếu SESSION_SECRET hay chuỗi kết nối thì dừng ngay, trước khi mở cổng.
   const config = loadConfig();
   const dbHandle = createDb({ url: resolveDatabaseUrlOrExplain() });
-  const app = await createApp({ deps: { db: dbHandle.db, clock: systemClock, session: config.session } });
+  const app = await createApp({
+    deps: { db: dbHandle.db, clock: systemClock, session: config.session, realtime: createRealtimeHub() },
+  });
 
   const server = app.listen(config.port, () => {
     console.log(`[api] http://localhost:${config.port}/api/health  (kiểm tra DB: /api/health/db)`);

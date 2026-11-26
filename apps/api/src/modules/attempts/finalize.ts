@@ -95,7 +95,8 @@ export async function finalizeAttempt(
   reason: AttemptEndReason,
 ): Promise<AttemptRow> {
   const now = deps.clock.now();
-  return deps.db.transaction(async (tx) => {
+  let ended = false;
+  const row = await deps.db.transaction(async (tx) => {
     const [attempt] = await tx
       .select()
       .from(attempts)
@@ -112,8 +113,12 @@ export async function finalizeAttempt(
       .returning();
     // Nhả mã học sinh: bài thi sau của học sinh không bị coi nhầm là đổi máy.
     await revokeStudentSessions(tx, attempt.studentId, attempt.examClassId, now);
+    ended = finished !== undefined;
     return finished ?? attempt;
   });
+  // Báo phòng thi SAU khi commit, và chỉ khi lần gọi này thật sự kết thúc bài (nộp, hết giờ, thu bài).
+  if (ended) deps.realtime?.publish(row.examClassId);
+  return row;
 }
 
 /** Lý do khi học sinh tự nộp: sau `ends_at` (kể cả trong dung sai) là hết giờ. */

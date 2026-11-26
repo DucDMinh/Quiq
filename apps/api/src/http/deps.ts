@@ -7,6 +7,7 @@
  * (`createTestClock` trong testing/test-clock.ts) để tua thời gian thay vì chờ thật.
  */
 import type { DatabaseLike } from "@quiq/db";
+import type { RealtimeHub } from "../realtime/hub";
 
 export interface Clock {
   now(): Date;
@@ -32,4 +33,9 @@ export interface AppDeps {
    * server.ts luôn truyền; createTestApp truyền khóa test.
    */
   session?: SessionConfig;
+  /**
+   * Kênh "lớp đổi" cho SSE phòng thi (Layer 4). Tùy chọn: thiếu thì mọi chỗ phát tín hiệu bỏ qua
+   * (`deps.realtime?.publish`), luồng SSE chỉ còn nhịp tính lại định kỳ. Chỉ gọi publish SAU khi commit.
+   */
+  realtime?: RealtimeHub;
 }
