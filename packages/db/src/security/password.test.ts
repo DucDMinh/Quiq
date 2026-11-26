@@ -54,9 +54,20 @@ describe("hashPassword / verifyPassword", () => {
     expect(await verifyPassword("bat-ky", stored)).toBe(false);
   });
 
-  it("từ chối khi hash đã lưu bị sửa một ký tự", async () => {
+  // Sửa trên BYTE đã giải mã rồi mã hóa lại, không sửa ký tự base64url. Ký tự cuối của salt (16 byte) và
+  // của khóa (64 byte) chứa 4 bit thừa, nên đổi nó trong cùng nhóm 16 ký tự vẫn ra đúng các byte cũ
+  // (cùng đầu vào scrypt, cùng kết quả: vô hại) và test sửa-ký-cuối sẽ chập chờn theo salt ngẫu nhiên.
+  it.each([
+    ["khóa", 5],
+    ["salt", 4],
+  ])("từ chối khi một byte của %s trong hash đã lưu bị sửa", async (_label, fieldIndex) => {
     const stored = await hashPassword("nguyen-ban");
-    const lastChar = stored.at(-1) === "A" ? "B" : "A";
-    expect(await verifyPassword("nguyen-ban", stored.slice(0, -1) + lastChar)).toBe(false);
+    const fields = stored.split("$");
+    const bytes = Buffer.from(fields[fieldIndex] ?? "", "base64url");
+    bytes[0] = (bytes[0] ?? 0) ^ 0xff;
+    fields[fieldIndex] = bytes.toString("base64url");
+
+    expect(await verifyPassword("nguyen-ban", fields.join("$"))).toBe(false);
+    expect(await verifyPassword("nguyen-ban", stored)).toBe(true);
   });
 });
