@@ -1,4 +1,12 @@
 {
   "_comment": "Lệnh verify mà reviewer/spec-validator được chạy thêm (khớp CHÍNH XÁC cả chuỗi). Sinh tự động: node scripts/apply-verify-permissions.mjs --write (đọc *_command trong .context/project-config.md). Được đọc bởi .claude/hooks/agent-guard.mjs.",
-  "verifyCommands": []
+  "verifyCommands": [
+    "pnpm --filter @quiq/web typecheck",
+    "pnpm lint",
+    "pnpm --filter @quiq/api typecheck",
+    "pnpm test",
+    "pnpm install",
+    "pnpm typecheck",
+    "pnpm build"
+  ]
 }

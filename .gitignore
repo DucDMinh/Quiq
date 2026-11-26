@@ -13,3 +13,11 @@ build/
 
 # Claude Code: cấu hình cá nhân, không commit
 .claude/settings.local.json
+
+# monorepo pnpm (Layer 0)
+.next/
+.turbo/
+*.tsbuildinfo
+coverage/
+.pglite/
+next-env.d.ts

@@ -1,0 +1,33 @@
+{
+  "name": "@quiq/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@koa/router": "^15.7.1",
+    "@quiq/db": "workspace:*",
+    "@quiq/engine": "workspace:*",
+    "@quiq/shared": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "koa": "^3.3.0",
+    "koa-bodyparser": "^4.4.1",
+    "postgres": "^4.1.1",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/koa": "^3.0.3",
+    "@types/koa-bodyparser": "^4.3.13",
+    "@types/node": "^22.20.7",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.2",
+    "typescript": "6.0.3",
+    "vitest": "^5.1.2"
+  }
+}

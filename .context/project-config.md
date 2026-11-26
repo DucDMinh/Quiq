@@ -23,17 +23,18 @@ package_manager: pnpm  # none/chưa điền = không hardcode lệnh
 source_roots: [apps, packages]  # monorepo pnpm: apps/web (Next.js), apps/api (Koa), packages/shared. Chưa có code — Layer 0 scaffold
 
 # ── Verify commands (null/placeholder = skip, no app configured) ──
-# ⏳ Chưa có app code: Layer 0 (scaffold monorepo) phải điền các lệnh pnpm tại đây rồi chạy `node scripts/apply-verify-permissions.mjs --write`.
-web_typecheck_command: null
-web_lint_command: null
-api_typecheck_command: null
-api_lint_command: null
-test_command: null
-install_command: null
-lint_command: null          # generic alias if web/api split does not apply
-typecheck_command: null     # generic alias if web/api split does not apply
-build_command: null
-migration_command: null     # only used when db_tool != none and migration_required: true
+# ✅ Layer 0 (scaffold monorepo) đã điền; sửa lệnh ở đây thì chạy lại `node scripts/apply-verify-permissions.mjs --write`.
+# ESLint chạy một lần cho cả monorepo nên web/api lint dùng chung `pnpm lint`.
+web_typecheck_command: pnpm --filter @quiq/web typecheck
+web_lint_command: pnpm lint
+api_typecheck_command: pnpm --filter @quiq/api typecheck
+api_lint_command: pnpm lint
+test_command: pnpm test
+install_command: pnpm install
+lint_command: pnpm lint          # generic alias if web/api split does not apply
+typecheck_command: pnpm typecheck     # generic alias if web/api split does not apply
+build_command: pnpm build
+migration_command: pnpm --filter @quiq/db db:migrate     # only used when db_tool != none and migration_required: true (script db:migrate do L1-01 thêm)
 
 # ── Database ──
 db_tool: drizzle                # Drizzle ORM + drizzle-kit trên Postgres của Supabase (C-01)
@@ -106,14 +107,14 @@ worktree_teardown_cmd: 'rm -f ".tmp-$WORKTREE_SLUG.db"'
 
 ```yaml
 check_commands:
-  install: null             # alias of install_command
-  web_typecheck: null       # hoặc = web_typecheck_command
-  web_lint: null            # hoặc = web_lint_command
-  api_typecheck: null       # hoặc = api_typecheck_command
-  api_lint: null            # hoặc = api_lint_command
-  test: null                # hoặc = test_command
-  build: null               # hoặc = build_command
-  migration: null           # hoặc = migration_command khi migration_required=true
+  install: pnpm install                                  # alias of install_command
+  web_typecheck: pnpm --filter @quiq/web typecheck       # hoặc = web_typecheck_command
+  web_lint: pnpm lint                                    # hoặc = web_lint_command
+  api_typecheck: pnpm --filter @quiq/api typecheck       # hoặc = api_typecheck_command
+  api_lint: pnpm lint                                    # hoặc = api_lint_command
+  test: pnpm test                                        # hoặc = test_command
+  build: pnpm build                                      # hoặc = build_command
+  migration: pnpm --filter @quiq/db db:migrate           # hoặc = migration_command khi migration_required=true
   docs_inventory: null
 ```
 
