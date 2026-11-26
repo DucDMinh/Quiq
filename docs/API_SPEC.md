@@ -88,7 +88,7 @@ Quyền phiên (`requireStudentSession(ctx, deps, "active" | "read")`): **hiệu
 |---|---|---|---|---|
 | `POST /api/student/enter` | không | `enterBodySchema` `{ examCode, studentCode }` | `{ examCode }`, đặt `quiq_stu` | 404 `EXAM_NOT_FOUND`, 404 `STUDENT_NOT_ALLOWED` (chung cho mã sai/vô hiệu/lớp khác/trường khác), 403 `SCHOOL_LOCKED`, 409 `ATTEMPT_IN_PROGRESS`, 409 `ENTER_CONFLICT` |
 | `GET /api/student/state` | chỉ-xem trở lên | | `StudentStateView` (`phase: waiting \| can_start \| in_progress \| completed \| closed`, thông tin bài, `attempt`, `serverNow`) | 401 `STUDENT_SESSION_REQUIRED` |
-| `POST /api/student/attempts` | hiệu lực | | 201 `ExamPaperView` | 409 `EXAM_NOT_DISPATCHED`, `EXAM_CLOSED`, `ATTEMPT_IN_PROGRESS`, `ATTEMPT_LIMIT_REACHED`, `ATTEMPT_ALREADY_COMPLETED` |
+| `POST /api/student/attempts` | hiệu lực | | 201 `ExamPaperView` | 409 `EXAM_NOT_DISPATCHED`, `EXAM_CLOSED` (lớp đã thu bài, kể cả phiên chỉ-xem), `ATTEMPT_IN_PROGRESS`, `ATTEMPT_LIMIT_REACHED`, `ATTEMPT_ALREADY_COMPLETED` |
 | `GET /api/student/attempts/:id` | hiệu lực | | `ExamPaperView` (đề + đáp án đã lưu, để tải lại trang) | 404 (attempt không phải của mình), 409 `ATTEMPT_ENDED` |
 | `PUT /api/student/attempts/:id/answers` | hiệu lực | `saveAnswerBodySchema` `{ questionId, optionIds }` | `SaveAnswerResult` `{ questionId, optionIds, serverNow }` | 409 `ATTEMPT_ENDED` (quá `ends_at + 3s`, tự nộp), 422 `INVALID_ANSWER` |
 | `POST /api/student/attempts/:id/submit` | chỉ-xem trở lên | | `AttemptResultView` (idempotent: nộp lại không đổi điểm) | 404 |

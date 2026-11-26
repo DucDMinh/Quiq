@@ -2,7 +2,7 @@
 
 > Overview + pointer. **Không chép cột/kiểu tay**: chi tiết lấy từ schema + migration.
 > Overview này khác schema/migration → **schema/migration thắng**.
-> Cập nhật lần cuối: 2026-11-26, sau Layer 2 (schema từ L1-01, chưa có migration mới).
+> Cập nhật lần cuối: 2026-11-26, sau Layer 3 (schema từ L1-01, chưa có migration mới).
 
 ## Source of truth
 
@@ -37,9 +37,9 @@ RLS **bật trên mọi bảng, không có policy**; `0001` thu hồi quyền b�
 | Ngân hàng (`bank.ts`) | `questions` | Câu hỏi của giáo viên (độ khó, môn) | FK ghép tới `staff_accounts`, `subjects` |
 | | `question_options` | Đáp án của câu (`is_correct`, `position`) | FK ghép tới `questions` |
 | Đề thi (`exam.ts`) | `exams` | Bài thi (`code` unique toàn hệ thống, `duration_minutes`) | FK ghép tới `staff_accounts`, `subjects` |
-| | `exam_questions` | **Bản sao** câu hỏi trong đề (không trỏ ngược ngân hàng, sửa ngân hàng không ảnh hưởng đề) | FK ghép tới `exams` |
+| | `exam_questions` | **Bản sao** câu hỏi trong đề; `source_question_id` chỉ để tham chiếu, **không có FK** tới ngân hàng nên sửa/xóa ngân hàng không ảnh hưởng đề (BR-002) | FK ghép tới `exams` |
 | | `exam_options` | Bản sao đáp án trong đề (`is_correct` chỉ dùng chấm) | FK ghép tới `exam_questions` |
-| | `exam_classes` | Bài thi giao cho lớp: `status` draft/dispatched/closed + snapshot quy chế lúc phát đề | FK ghép tới `exams`, `classes`; unique `(exam_id, class_id)` |
+| | `exam_classes` | Bài thi giao cho lớp: `status` draft/dispatched/closed, `dispatched_at`/`closed_at`, snapshot quy chế lúc phát đề, `answers_published_at`/`scores_published_at` (dành cho công bố, Layer 5) | FK ghép tới `exams`, `classes`; unique `(exam_id, class_id)` |
 | Làm bài (`attempt.ts`) | `student_sessions` | Phiên học sinh (`token_hash` SHA-256, `revoked_at`) | FK ghép tới `students`, `exam_classes`; **tối đa một phiên chưa thu hồi mỗi học sinh** (unique partial) |
 | | `waiting_presence` | Học sinh có mặt ở phòng chờ (`last_seen`) | PK `(exam_class_id, student_id)` |
 | | `attempts` | Lần làm bài (`status`, `started_at`, `ends_at`, `score` 0..10, thứ tự câu/đáp án đã trộn) | FK ghép tới `students`, `exam_classes`; **tối đa một `in_progress` mỗi học sinh** (unique partial) |
