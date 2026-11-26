@@ -1,4 +1,4 @@
-import { attempts, studentSessions, type DatabaseLike } from "@quiq/db";
+import { attempts, examClasses, studentSessions, type DatabaseLike } from "@quiq/db";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Context } from "koa";
 import { createHash, randomBytes } from "node:crypto";
@@ -164,8 +164,27 @@ export async function requireStudentSession(
     examClassId: row.examClassId,
     active: row.revokedAt === null,
   };
-  if (session.active) return session;
+  if (!row.revokedAt) return session;
   if (access === "read" && (await hasSubmittedAttempt(deps.db, row.studentId, row.examClassId)))
     return session;
+
+  // Thu bài thu hồi mọi phiên của lớp với revoked_at = closed_at, và sau đó vào lớp đã đóng chỉ được phiên
+  // chỉ-xem (revoked_at = lúc cấp). Cả hai đều không sớm hơn closed_at: được XEM để phòng chờ hiện "đã thu bài".
+  // Phiên bị thu hồi trước khi thu bài (vd vào thi ở máy khác) vẫn bị từ chối như cũ.
+  const closedAt = await classClosedAt(deps.db, row.examClassId);
+  if (closedAt && access === "read" && row.revokedAt.getTime() >= closedAt.getTime()) return session;
+  // Phiên chỉ-xem cấp SAU khi lớp đóng mà bấm Bắt đầu: nói rõ lý do thay vì "phiên đã kết thúc".
+  if (closedAt && access === "active" && row.createdAt.getTime() >= closedAt.getTime())
+    throw studentError("EXAM_CLOSED");
   throw studentError("STUDENT_SESSION_REQUIRED");
+}
+
+/** closed_at của lớp thi nếu lớp đã thu bài, ngược lại null. */
+async function classClosedAt(db: DatabaseLike, examClassId: string): Promise<Date | null> {
+  const [examClass] = await db
+    .select({ status: examClasses.status, closedAt: examClasses.closedAt })
+    .from(examClasses)
+    .where(eq(examClasses.id, examClassId))
+    .limit(1);
+  return examClass?.status === "closed" ? examClass.closedAt : null;
 }

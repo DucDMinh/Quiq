@@ -63,14 +63,14 @@ async function findEligibleStudent(
   if (!student) throw studentError("STUDENT_NOT_ALLOWED");
 
   const [examClass] = await db
-    .select({ id: examClasses.id })
+    .select({ id: examClasses.id, status: examClasses.status })
     .from(examClasses)
     .innerJoin(enrollments, eq(enrollments.classId, examClasses.classId))
     .where(and(eq(examClasses.examId, examId), eq(enrollments.studentId, student.id)))
     .orderBy(desc(examClasses.createdAt))
     .limit(1);
   if (!examClass) throw studentError("STUDENT_NOT_ALLOWED");
-  return { studentId: student.id, examClassId: examClass.id };
+  return { studentId: student.id, examClassId: examClass.id, classClosed: examClass.status === "closed" };
 }
 
 async function hasAttemptWithStatus(
@@ -98,7 +98,7 @@ async function hasAttemptWithStatus(
  * - Cookie hiện có là phiên hiệu lực của chính học sinh ở lớp này: giữ nguyên phiên (làm tiếp, C-13).
  * - Không có cookie đó mà học sinh đang làm bài (ở bất kỳ lớp nào): từ chối 409, không thu hồi, không cấp
  *   phiên. Nếu không, ai biết mã bài thi và mã học sinh là chiếm được bài đang làm (đổi máy là tính năng sau).
- * - Đã nộp bài lớp này: cấp phiên chỉ-xem để thấy kết quả.
+ * - Đã nộp bài lớp này, hoặc lớp đã thu bài: cấp phiên chỉ-xem (thấy kết quả / trạng thái đã thu bài).
  */
 export async function enterExam(
   deps: AppDeps,
@@ -106,7 +106,7 @@ export async function enterExam(
 ): Promise<EnterResult> {
   const exam = await findExam(deps.db, input.examCode);
   if (exam.schoolStatus === "locked") throw studentError("SCHOOL_LOCKED");
-  const { studentId, examClassId } = await findEligibleStudent(
+  const { studentId, examClassId, classClosed } = await findEligibleStudent(
     deps.db,
     exam.schoolId,
     exam.id,
@@ -135,7 +135,8 @@ export async function enterExam(
         studentId,
         examClassId,
         now,
-        readOnly: finished,
+        // Lớp đã thu bài: chỉ được xem trạng thái, không bao giờ cấp phiên làm bài (giữ mã học sinh).
+        readOnly: finished || classClosed,
       });
     });
     return { token, examCode: exam.code };
