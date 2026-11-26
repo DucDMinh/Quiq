@@ -55,3 +55,4 @@ Web đúng design-spec §9.2 và §9.3 (phần demo):
 - Không sửa `finalize.ts` của L2-02; chỉ gọi. Cần hành vi mới thì ghi vào task đó là "cần change".
 - Phòng chờ hiển thị "Đang chờ" dựa `waiting_presence.last_seen` trong 15 giây gần nhất (hằng số dùng chung với student).
 - Risk: trung bình đến cao (transaction, quyền, snapshot). Reviewer STRICT.
+- **Ghi nhận từ review Layer 2 (phải xử lý ở task này):** (1) Thu bài phải **thu hồi mọi phiên `student_sessions` của `exam_class_id` đó**, kể cả học sinh ở phòng chờ chưa bắt đầu (gap G-06, `docs/changes/TECHNICAL_REQUIREMENT_GAPS.md`); attempt đang làm thì kết thúc qua `finalizeAttempt(deps, id, "closed")`. (2) Route giáo viên dùng `staffGuard(deps, ["teacher"])` + `tenantSchoolId(ctx)` từ `apps/api/src/http/guards.ts`, truy cập chéo trường trả 404. (3) Cập nhật `docs/API_SPEC.md` (as-built) cho endpoint mới ở close-out; trailer `Doc-Impact` không được `none` khi thêm endpoint.

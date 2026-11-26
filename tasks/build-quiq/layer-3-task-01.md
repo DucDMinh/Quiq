@@ -47,3 +47,4 @@ Web (`/giao-vien/ngan-hang`) đúng design-spec §9.1: 4 thẻ KPI, lọc pill t
 - **Không sửa** `nav-config.ts` (mục menu đã khai ở L2-01) và không đụng migration. Ảnh (`media`, Supabase Storage) là tính năng sau; để cột/nút ảnh ra ngoài phạm vi này.
 - Task này không trùng file với L3-02 (thư mục `questions/` và `ngan-hang/` riêng).
 - Risk: thấp đến trung bình (quyền sở hữu). Reviewer NORMAL, STRICT phần cô lập sở hữu.
+- **Ghi nhận từ review Layer 2:** route giáo viên dùng `staffGuard(deps, ["teacher"])` + `tenantSchoolId(ctx)` (`apps/api/src/http/guards.ts`), chéo trường 404; thêm mục menu chỉ sửa `apps/web/src/features/shell/nav-config.ts` (đã có sẵn 3 mục demo). Endpoint mới phải vào `docs/API_SPEC.md` ở close-out (`Doc-Impact` không được `none`).

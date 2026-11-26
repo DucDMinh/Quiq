@@ -1,0 +1,15 @@
+# Gap register: code (as-built) ↔ intent / hardening
+
+> Ghi chỗ code hiện tại **chưa** đạt intent (spec, design doc) hoặc còn rủi ro đã biết. **Không** hạ cấp intent cho khớp code.
+> Đóng gap: đổi `Status` + ghi commit/task đã xử lý.
+> Nguồn: review report Layer 2 (`.context/review-reports/feature-build-quiq-layer-2-task-0{1,2}-round-{1,2}-review.md`).
+
+| ID | Mức | Vùng | Mô tả | Hướng xử lý đề xuất | Đích | Status |
+|---|---|---|---|---|---|---|
+| G-01 | MAJOR (prod) | auth rate-limit | `app.proxy` tắt nên sau rewrite Next `ctx.ip` luôn là IP proxy: giới hạn đăng nhập thực chất chỉ theo username, người lạ khóa được tài khoản 15 phút (lặp lại được). | Bật `app.proxy` + cấu hình proxy tin cậy (X-Forwarded-For từ Next) trong `app.ts`; cân nhắc khóa theo username có backoff thay vì chặn cứng. | Layer 17 (cứng hóa) hoặc sớm hơn trước deploy | open |
+| G-02 | MINOR | auth rate-limit | (a) Trần 10.000 khóa đuổi khóa cũ nhất: spam username rác đẩy được bộ đếm nạn nhân ra (thêm 5 lượt đoán / ~10k request). (b) Lỗi DB khi so mật khẩu không trả lượt đã giữ chỗ → 5 lỗi hạ tầng có thể khóa oan 15 phút. (c) Bộ đếm theo tiến trình, nhiều instance nhân giới hạn. (d) `/auth/login` không kiểm `Origin` (login CSRF, tác động thấp). | Đuổi khóa count thấp trước + giới hạn theo IP; `release` khi lỗi hạ tầng; store dùng chung nếu chạy nhiều instance; kiểm Origin. | Layer 17 | open |
+| G-03 | MINOR | student enter | `POST /api/student/enter` chưa có rate limit trong khi mã học sinh dễ đoán (design-spec §4.1 có nêu). | Rate limit theo IP + mã bài thi. | Layer 6/17 | open |
+| G-04 | MINOR (intent lệch) | đổi máy | (a) Đang `in_progress` mà vào từ máy khác → 409 (bản tạm), lệch luồng takeover trong `docs/specs/2026-11-25-quiq-design.md` (C-03/C-13). Học sinh mất cookie giữa giờ bị khóa tới khi hết giờ. (b) Học sinh mới ở **phòng chờ** (chưa Bắt đầu) thì client khác vào cùng mã giành được phiên rồi làm bài thay. | FR-043: `takeover_logs`, đánh dấu `interrupted`/`kicked`, giáo viên duyệt, rate limit. | Layer 7 | open |
+| G-05 | MINOR (prod) | cookie | Cookie `quiq_stu` đặt `Secure` theo `ctx.secure`; sau proxy HTTPS (chưa bật `app.proxy`) sẽ thiếu cờ Secure. Cookie cán bộ dùng `NODE_ENV=production`, hai bên chưa thống nhất. | Thống nhất dùng `deps.session.secureCookie` cho cả hai (cùng lúc với G-01). | trước deploy production | open |
+| G-06 | MINOR | phiên học sinh | `student_sessions` chưa có TTL; `finalizeAttempt` chỉ thu hồi phiên học sinh đã có attempt. Phiên phòng chờ / lớp đã thu bài mà chưa làm vẫn hiệu lực. | **L3-02 (thu bài) phải thu hồi mọi phiên theo `exam_class_id`**; cân nhắc TTL. | Layer 3 (L3-02) | open |
+| G-07 | MINOR | race | Trên Postgres thật (READ COMMITTED) còn cửa sổ hẹp giữa "vào thi không cookie" và "Bắt đầu": `insertAttempt` không kiểm lại phiên còn hiệu lực trong transaction. PGlite một kết nối không tái hiện được. | `SELECT ... FOR UPDATE` hàng `student_sessions` (hoặc khóa theo học sinh) trong transaction start. | Layer 7 (cùng đổi máy) | open |
