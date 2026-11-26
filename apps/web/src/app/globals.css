@@ -1,1 +1,220 @@
 @import "tailwindcss";
+
+/*
+ * Design tokens của Quiq (nguồn: skills/react-nodejs/design-tokens.md).
+ * Giá trị thô chỉ nằm ở file này. Component dùng tiện ích Tailwind map từ khối @theme bên dưới.
+ * Chỉ giao diện sáng, chỉ dành cho máy tính (>= 1024px).
+ */
+:root {
+  /* Thương hiệu */
+  --quiq-brand: #0f766e;
+  --quiq-brand-dark: #134e4a;
+  --quiq-brand-hover: #115e59;
+  --quiq-brand-tint: #ccfbf1;
+  --quiq-brand-tint-soft: #f0fdfa;
+  --quiq-brand-border: #99f6e4;
+
+  /* Màu hành động; "lip" là màu cạnh dưới của nút nổi khối */
+  --quiq-rose: #be123c;
+  --quiq-rose-lip: #881337;
+  --quiq-indigo: #4338ca;
+  --quiq-indigo-lip: #312e81;
+  --quiq-amber: #f59e0b;
+  --quiq-amber-lip: #b45309;
+  --quiq-amber-ink: #1f1300;
+  --quiq-green: #15803d;
+  --quiq-green-lip: #14532d;
+  --quiq-sky: #0369a1;
+  --quiq-sky-lip: #075985;
+  --quiq-red: #b91c1c;
+  --quiq-red-lip: #7f1d1d;
+
+  /* Ô đáp án theo vị trí A B C D */
+  --answer-a-bg: var(--quiq-rose);
+  --answer-b-bg: var(--quiq-indigo);
+  --answer-c-bg: var(--quiq-amber);
+  --answer-d-bg: var(--quiq-green);
+
+  /* Nền, viền, chữ */
+  --bg-canvas: #f2f2f2;
+  --bg-surface: #ffffff;
+  --bg-portal: #f0fdfa;
+  --bg-subtle: #eaeaea;
+  --bg-hover: #e0e0e0;
+  --border-subtle: #dcdcdc;
+  --border-strong: #bdbdbd;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #666666;
+  --brand-primary: var(--quiq-brand);
+  --brand-primary-hover: var(--quiq-brand-hover);
+  --brand-primary-tint: var(--quiq-brand-tint);
+  --brand-primary-text: #ffffff;
+  --on-brand-muted: #ccfbf1;
+  --on-brand-dark-label: #fde68a;
+
+  /* Trạng thái ngữ nghĩa */
+  --status-success-bg: #dcfce7;
+  --status-success-text: #166534;
+  --status-success-border: #86efac;
+  --status-warning-bg: #fef3c7;
+  --status-warning-text: #854d0e;
+  --status-warning-border: #fcd34d;
+  --status-danger-bg: #fee2e2;
+  --status-danger-text: #991b1b;
+  --status-danger-border: #fca5a5;
+  --status-info-bg: #dbeafe;
+  --status-info-text: #1e40af;
+  --status-info-border: #93c5fd;
+  --status-neutral-bg: #ededed;
+  --status-neutral-text: #333333;
+  --status-neutral-border: #cccccc;
+
+  /* Focus: ring teal trên nền sáng, trắng trên nền teal (đặt class .on-brand lên vùng teal) */
+  --focus-ring: #0f766e;
+  --focus-ring-on-brand: #ffffff;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* Nút nổi khối */
+  --lip-width: 4px;
+  --lip-pressed: 2px;
+  /* Dẫn xuất từ ghi chú tokens: nút nhỏ 3px, ô đáp án 6px; viền ô đáp án 3px. */
+  --lip-width-sm: 3px;
+  --lip-width-answer: 6px;
+  --tile-border-width: 3px;
+
+  /* Kích thước tương tác */
+  --control-height-sm: 36px;
+  --control-height-md: 42px;
+  --control-height-lg: 50px;
+  --answer-min-height: 82px;
+
+  /* Bố cục */
+  --layout-min-width: 1024px;
+  --layout-sidebar-width: 276px;
+  --layout-content-max: 1380px;
+  --layout-portal-max: 1140px;
+  --layout-result-max: 860px;
+  --layout-exam-max: 1280px;
+  --layout-exam-aside: 310px;
+
+  --line-height-body: 1.55;
+  --line-height-tight: 1.2;
+}
+
+/* Màu: tiện ích bg-*, text-*, border-* lấy giá trị trực tiếp từ biến ở :root. */
+@theme inline {
+  --color-brand: var(--quiq-brand);
+  --color-brand-dark: var(--quiq-brand-dark);
+  --color-brand-hover: var(--quiq-brand-hover);
+  --color-brand-tint: var(--quiq-brand-tint);
+  --color-brand-tint-soft: var(--quiq-brand-tint-soft);
+  --color-brand-border: var(--quiq-brand-border);
+
+  --color-quiq-rose: var(--quiq-rose);
+  --color-quiq-rose-lip: var(--quiq-rose-lip);
+  --color-quiq-indigo: var(--quiq-indigo);
+  --color-quiq-indigo-lip: var(--quiq-indigo-lip);
+  --color-quiq-amber: var(--quiq-amber);
+  --color-quiq-amber-lip: var(--quiq-amber-lip);
+  --color-quiq-amber-ink: var(--quiq-amber-ink);
+  --color-quiq-green: var(--quiq-green);
+  --color-quiq-green-lip: var(--quiq-green-lip);
+  --color-quiq-sky: var(--quiq-sky);
+  --color-quiq-sky-lip: var(--quiq-sky-lip);
+  --color-quiq-red: var(--quiq-red);
+  --color-quiq-red-lip: var(--quiq-red-lip);
+
+  --color-answer-a: var(--answer-a-bg);
+  --color-answer-b: var(--answer-b-bg);
+  --color-answer-c: var(--answer-c-bg);
+  --color-answer-d: var(--answer-d-bg);
+
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-portal: var(--bg-portal);
+  --color-subtle: var(--bg-subtle);
+  --color-hovered: var(--bg-hover);
+  --color-line: var(--border-subtle);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-on-brand: var(--brand-primary-text);
+  --color-on-brand-muted: var(--on-brand-muted);
+  --color-on-brand-label: var(--on-brand-dark-label);
+  --color-focus: var(--focus-ring);
+
+  --color-success-bg: var(--status-success-bg);
+  --color-success-text: var(--status-success-text);
+  --color-success-border: var(--status-success-border);
+  --color-warning-bg: var(--status-warning-bg);
+  --color-warning-text: var(--status-warning-text);
+  --color-warning-border: var(--status-warning-border);
+  --color-danger-bg: var(--status-danger-bg);
+  --color-danger-text: var(--status-danger-text);
+  --color-danger-border: var(--status-danger-border);
+  --color-info-bg: var(--status-info-bg);
+  --color-info-text: var(--status-info-text);
+  --color-info-border: var(--status-info-border);
+  --color-neutral-bg: var(--status-neutral-bg);
+  --color-neutral-text: var(--status-neutral-text);
+  --color-neutral-border: var(--status-neutral-border);
+}
+
+/* Font, bo góc, đổ bóng, motion: static để biến luôn được phát ra dù chưa có tiện ích nào dùng. */
+@theme static {
+  --font-display: var(--font-montserrat), "Be Vietnam Pro", system-ui, sans-serif;
+  --font-sans:
+    var(--font-be-vietnam-pro), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  --text-score: 44px;
+  --text-score--line-height: 1.1;
+  /* Cỡ chữ nút/tab (15px) và badge (13px) nằm giữa các bậc chuẩn của tokens. */
+  --text-control: 0.9375rem;
+  --text-badge: 0.8125rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  --shadow-card: 0 2px 0 rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 16px 40px rgba(6, 44, 41, 0.28);
+  --shadow-selected: inset 0 0 0 2px color-mix(in srgb, black 22%, transparent);
+
+  --ease-fast: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    line-height: var(--line-height-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Ring focus đồng nhất; mọi điều khiển tương tác nhận ring này, không dùng vàng. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .on-brand {
+    --focus-ring: var(--focus-ring-on-brand);
+  }
+}
+
+/* Người dùng yêu cầu giảm chuyển động: tắt mọi transition và animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
