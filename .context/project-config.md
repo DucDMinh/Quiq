@@ -58,7 +58,7 @@ otel_env: staging
 # Có sẵn env: $WORKTREE_PATH (đường dẫn tuyệt đối của worktree), $TASK_ID
 # (vd layer-1/task-02), $WORKTREE_SLUG (vd layer-1__task-02). cwd = worktree.
 # Rỗng = bỏ qua hook.
-worktree_setup_cmd: ""         # chạy SAU khi tạo worktree (tạo DB riêng + ghi .env.local riêng)
+worktree_setup_cmd: "pnpm install --frozen-lockfile"         # chạy SAU khi tạo worktree (tạo DB riêng + ghi .env.local riêng)
 worktree_teardown_cmd: ""      # chạy TRƯỚC khi xoá worktree (drop DB tạm, dọn file runtime)
 ```
 

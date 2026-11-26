@@ -1,7 +1,7 @@
 # Layer plan: build-quiq (bản 2, chia theo "demo chạy được trước, thêm từng tính năng sau")
 
 Nguồn: `SPECIFICATIONS.md` v1.0.0 (Clarifications C-01..C-13 ghi đè BRD), `docs/specs/2026-11-25-quiq-design.md`, `.context/design-spec.md`, `skills/react-nodejs/design-tokens.md`, `.context/project-config.md`.
-Slug: `build-quiq`. Bản nháp cũ (9 layer, 30 task, schema toàn bộ ngay từ đầu) đã chuyển sang `tasks/_draft-v1/` để tham khảo.
+Slug: `build-quiq`. Bản nháp cũ (9 layer, 30 task, schema toàn bộ ngay từ đầu) đã chuyển sang `.context/archive/tasks-draft-v1/` để tham khảo.
 Layer-plan diagram: **skipped (archify chưa cài, cần tải gói ngoài)**.
 
 ## 1. Nguyên tắc
