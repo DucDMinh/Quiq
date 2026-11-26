@@ -4,7 +4,9 @@ import { staffGuard } from "../../http/guards";
 import { ok } from "../../http/response";
 import type { RegisterRoutes } from "../loader";
 import { teacherScope } from "../exams/service";
-import { closeClass, dispatchClass, getRoster, type ExamClassRef } from "./service";
+import { getRoster } from "./roster";
+import { closeClass, dispatchClass, type ExamClassRef } from "./service";
+import { openRosterStream } from "./stream";
 
 function examClassRefOf(params: unknown): ExamClassRef {
   const parsed = examClassParamsSchema.safeParse(params);
@@ -27,6 +29,10 @@ const registerClassControlRoutes: RegisterRoutes = (router, deps) => {
 
   router.get(`${BASE}/roster`, ...guard, async (ctx) => {
     ok(ctx, await getRoster(deps, teacherScope(ctx), examClassRefOf(ctx.params)));
+  });
+
+  router.get(`${BASE}/stream`, ...guard, async (ctx) => {
+    await openRosterStream(ctx, deps, teacherScope(ctx), examClassRefOf(ctx.params));
   });
 };
 

@@ -1,28 +1,9 @@
-import {
-  attempts,
-  classes,
-  enrollments,
-  examClasses,
-  exams,
-  schools,
-  studentSessions,
-  students,
-  waitingPresence,
-  type DatabaseLike,
-} from "@quiq/db";
-import { officialScore } from "@quiq/engine";
-import type {
-  CloseClassResult,
-  ExamClassState,
-  RosterStatus,
-  RosterStudent,
-  RosterView,
-} from "@quiq/shared/exams";
-import { WAITING_PRESENCE_FRESH_SECONDS } from "@quiq/shared/student";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { attempts, classes, examClasses, exams, schools, studentSessions, type DatabaseLike } from "@quiq/db";
+import type { CloseClassResult, ExamClassState } from "@quiq/shared/exams";
+import { and, eq, isNull } from "drizzle-orm";
 import type { AppDeps } from "../../http/deps";
 import { AppError } from "../../http/errors";
-import { finalizeAttempt } from "../attempts/finalize";
+import { finalizeAttempt, isPastGrace } from "../attempts/finalize";
 import { examError, type TeacherScope } from "../exams/service";
 
 export interface ExamClassRef {
@@ -31,7 +12,7 @@ export interface ExamClassRef {
 }
 
 /** Lớp của một bài thi do CHÍNH giáo viên này ra, trong trường của phiên; khác đi thì 404. */
-async function loadOwnedExamClass(db: DatabaseLike, scope: TeacherScope, ref: ExamClassRef) {
+export async function loadOwnedExamClass(db: DatabaseLike, scope: TeacherScope, ref: ExamClassRef) {
   const [row] = await db
     .select({
       id: examClasses.id,
@@ -62,9 +43,9 @@ async function loadOwnedExamClass(db: DatabaseLike, scope: TeacherScope, ref: Ex
   return row;
 }
 
-type OwnedExamClass = Awaited<ReturnType<typeof loadOwnedExamClass>>;
+export type OwnedExamClass = Awaited<ReturnType<typeof loadOwnedExamClass>>;
 
-function toClassState(row: OwnedExamClass): ExamClassState {
+export function toClassState(row: OwnedExamClass): ExamClassState {
   return {
     examId: row.examId,
     classId: row.classId,
@@ -118,16 +99,24 @@ export async function dispatchClass(
     .where(and(eq(examClasses.id, examClass.id), eq(examClasses.status, "draft")))
     .returning({ id: examClasses.id });
   if (updated.length === 0) throw examError("CLASS_ALREADY_DISPATCHED");
+  deps.realtime?.publish(examClass.id);
   return toClassState(await loadOwnedExamClass(deps.db, scope, ref));
 }
 
+/**
+ * G-12: bài đã quá `ends_at + 3 giây` (cùng dung sai với lưu đáp án) là hết giờ thật, kết thúc với `timeout`;
+ * bài còn giờ mới là bị thu (`closed`).
+ */
 async function finalizeRunningAttempts(deps: AppDeps, examClassId: string): Promise<number> {
   const running = await deps.db
-    .select({ id: attempts.id })
+    .select()
     .from(attempts)
     .where(and(eq(attempts.examClassId, examClassId), eq(attempts.status, "in_progress")));
+  const now = deps.clock.now();
   // Mỗi lần nộp là một transaction riêng của finalizeAttempt; không bọc trong transaction ngoài.
-  for (const attempt of running) await finalizeAttempt(deps, attempt.id, "closed");
+  for (const attempt of running) {
+    await finalizeAttempt(deps, attempt.id, isPastGrace(attempt, now) ? "timeout" : "closed");
+  }
   return running.length;
 }
 
@@ -155,7 +144,7 @@ async function markClosed(deps: AppDeps, examClassId: string): Promise<Date> {
  * Thu bài (FR-034, BR-006, G-06), ba bước tách rời (finalizeAttempt tự mở transaction riêng):
  * 1. Đóng lớp: từ đây không ai Bắt đầu được nữa.
  * 2. Thu hồi MỌI phiên còn hiệu lực của lớp (kể cả học sinh ở phòng chờ), revoked_at = closed_at.
- * 3. Nộp + chấm ngay mọi lần làm đang diễn ra qua `finalizeAttempt(..., "closed")`.
+ * 3. Nộp + chấm ngay mọi lần làm đang diễn ra qua `finalizeAttempt` (`closed`, hoặc `timeout` nếu đã quá hạn).
  * IDEMPOTENT: gọi lại với lớp đã `closed` chạy lại bước 2 và 3 rồi trả 200, để lần thu bài lỗi giữa chừng
  * luôn hoàn tất được (finalizeAttempt bỏ qua bài đã nộp, thu hồi chỉ đụng phiên còn hiệu lực).
  */
@@ -176,104 +165,10 @@ export async function closeClass(
     .set({ revokedAt: closedAt })
     .where(and(eq(studentSessions.examClassId, examClass.id), isNull(studentSessions.revokedAt)));
   const finalizedAttempts = await finalizeRunningAttempts(deps, examClass.id);
+  deps.realtime?.publish(examClass.id);
 
   return {
     examClass: toClassState(await loadOwnedExamClass(deps.db, scope, ref)),
     finalizedAttempts,
-  };
-}
-
-interface StudentActivity {
-  statuses: string[];
-  submittedScores: number[];
-  lastSeenAt: Date | null;
-}
-
-/** Cùng thứ tự ưu tiên với pha phòng chờ của học sinh: đang làm, đã nộp, đang chờ, chưa làm. */
-export function deriveRosterStatus(
-  activity: StudentActivity,
-  classStatus: OwnedExamClass["status"],
-  now: Date,
-): RosterStatus {
-  if (activity.statuses.includes("in_progress")) return "in_progress";
-  if (activity.statuses.includes("submitted")) return "submitted";
-  // Lớp đã thu bài thì không còn ai "đang chờ" nữa, dù dấu hiện diện chưa kịp cũ.
-  const fresh =
-    activity.lastSeenAt !== null &&
-    now.getTime() - activity.lastSeenAt.getTime() <= WAITING_PRESENCE_FRESH_SECONDS * 1000;
-  return fresh && classStatus !== "closed" ? "waiting" : "not_started";
-}
-
-async function loadClassActivity(db: DatabaseLike, examClassId: string) {
-  const attemptRows = await db
-    .select({ studentId: attempts.studentId, status: attempts.status, score: attempts.score })
-    .from(attempts)
-    .where(eq(attempts.examClassId, examClassId));
-  const presenceRows = await db
-    .select({ studentId: waitingPresence.studentId, lastSeenAt: waitingPresence.lastSeenAt })
-    .from(waitingPresence)
-    .where(eq(waitingPresence.examClassId, examClassId));
-
-  const activity = new Map<string, StudentActivity>();
-  const entry = (studentId: string) => {
-    const existing = activity.get(studentId);
-    if (existing) return existing;
-    const created: StudentActivity = { statuses: [], submittedScores: [], lastSeenAt: null };
-    activity.set(studentId, created);
-    return created;
-  };
-  for (const row of attemptRows) {
-    const item = entry(row.studentId);
-    item.statuses.push(row.status);
-    if (row.status === "submitted" && row.score !== null) item.submittedScores.push(row.score);
-  }
-  for (const row of presenceRows) entry(row.studentId).lastSeenAt = row.lastSeenAt;
-  return activity;
-}
-
-/** Bảng trạng thái lớp (FR-035, polling 3 giây): chỉ học sinh ghi danh vào CHÍNH lớp này, mã chưa vô hiệu. */
-export async function getRoster(
-  deps: AppDeps,
-  scope: TeacherScope,
-  ref: ExamClassRef,
-): Promise<RosterView> {
-  const examClass = await loadOwnedExamClass(deps.db, scope, ref);
-  const studentRows = await deps.db
-    .select({ studentId: students.id, code: students.code, fullName: students.fullName })
-    .from(enrollments)
-    .innerJoin(students, eq(students.id, enrollments.studentId))
-    .where(
-      and(
-        eq(enrollments.classId, examClass.classId),
-        eq(enrollments.schoolId, scope.schoolId),
-        eq(students.codeVoided, false),
-      ),
-    )
-    .orderBy(asc(students.code));
-  const activity = await loadClassActivity(deps.db, examClass.id);
-  const now = deps.clock.now();
-
-  const counts: RosterView["counts"] = { not_started: 0, waiting: 0, in_progress: 0, submitted: 0 };
-  const rosterStudents: RosterStudent[] = studentRows.map((student) => {
-    const item = activity.get(student.studentId) ?? {
-      statuses: [],
-      submittedScores: [],
-      lastSeenAt: null,
-    };
-    const status = deriveRosterStatus(item, examClass.status, now);
-    counts[status] += 1;
-    return {
-      ...student,
-      status,
-      attemptsUsed: item.statuses.filter((s) => s !== "waiting").length,
-      bestScore: officialScore(item.submittedScores),
-    };
-  });
-
-  return {
-    examClass: toClassState(examClass),
-    students: rosterStudents,
-    counts,
-    serverNow: now.toISOString(),
   };
 }
