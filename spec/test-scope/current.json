@@ -1,146 +1,112 @@
 {
   "specVersion": "1.0.0",
-  "scopeVersion": 1,
-  "generatedAt": "2026-11-26T16:02:45+07:00",
-  "trigger": "initial-build",
-  "workItem": "build-quiq-demo-layer-0-3",
-  "specRefs": [
-    "FR-002", "FR-014", "FR-020", "FR-022", "FR-023", "FR-024",
-    "FR-030", "FR-031", "FR-032", "FR-033", "FR-034", "FR-035", "FR-036",
-    "FR-040", "FR-041", "FR-042", "FR-046", "FR-047", "FR-050", "FR-051",
-    "BR-001", "BR-002", "BR-003", "BR-006", "BR-007", "BR-008", "BR-012", "BR-014",
-    "FR-001", "FR-043", "BR-004", "BR-005", "BR-015", "BR-017"
-  ],
+  "scopeVersion": 2,
+  "generatedAt": "2026-11-26T21:05:26+07:00",
+  "trigger": "feature-update",
+  "workItem": "build-quiq-layer-4-task-01",
+  "previousScope": {
+    "scopeVersion": 1,
+    "trigger": "initial-build",
+    "ref": "git show 95ae75f:spec/test-scope/current.json",
+    "note": "Chi tiết checks của flow-1..flow-9 nằm ở scope v1. Scope v2 chỉ ghi phần mới/đổi; các luồng cũ nằm ở impact.regression."
+  },
+  "specRefs": ["FR-035", "C-12", "FR-041", "FR-034"],
   "changed": {
     "files": [
-      "apps/api/src/**",
-      "apps/web/src/**",
-      "packages/db/**",
-      "packages/engine/src/**",
-      "packages/shared/src/**"
+      "apps/api/src/realtime/hub.ts",
+      "apps/api/src/realtime/sse.ts",
+      "apps/api/src/modules/class-control/stream.ts",
+      "apps/api/src/modules/class-control/roster.ts",
+      "apps/api/src/modules/class-control/service.ts",
+      "apps/api/src/modules/class-control/routes.ts",
+      "apps/api/src/modules/attempts/finalize.ts",
+      "apps/api/src/modules/attempts/service.ts",
+      "apps/api/src/modules/student/service.ts",
+      "apps/api/src/http/guards.ts",
+      "apps/api/src/http/deps.ts",
+      "apps/api/src/server.ts",
+      "packages/shared/src/exams/schemas.ts",
+      "apps/web/src/features/class-control/use-roster.ts",
+      "apps/web/src/features/class-control/control-panel.tsx",
+      "apps/web/src/features/class-control/roster-table.tsx"
     ],
     "modules": [
-      "api.health",
-      "api.auth",
-      "api.student",
-      "api.attempts",
-      "api.questions",
-      "api.exams",
-      "api.class-control",
-      "engine.grade",
-      "engine.shuffle",
-      "engine.draw",
-      "engine.attempt-state",
-      "db.schema",
-      "db.seed",
-      "web.student",
-      "web.auth",
-      "web.questions",
-      "web.exams",
-      "web.class-control",
-      "web.shell"
-    ]
+      "api.realtime (mới: hub trong tiến trình + ghi SSE)",
+      "api.class-control (stream mới, roster có ghi, thu bài đổi lý do kết thúc)",
+      "api.attempts (finalize phát tín hiệu hub)",
+      "api.student (enter/presence phát tín hiệu hub)",
+      "api.http.guards (createSessionCheck: kiểm phiên không gia hạn)",
+      "shared.exams (RosterStudent.interrupted, ROSTER_STREAM_EVENT)",
+      "web.class-control (EventSource, huy hiệu kết nối, fallback polling)"
+    ],
+    "commits": ["d840832", "95ae75f"]
   },
   "impact": {
     "direct": [
-      "flow-1.student-full-flow",
-      "flow-2.lazy-timeout",
-      "flow-3.student-enter-rejections",
-      "flow-4.teacher-create-exam",
-      "flow-5.class-control",
-      "flow-6.question-bank",
-      "flow-7.isolation-and-permissions",
-      "flow-8.staff-auth",
-      "flow-9.health"
+      "flow-10.roster-sse-stream",
+      "flow-11.roster-expiry-and-close-reason",
+      "flow-12.web-live-roster",
+      "flow-5.class-control (đổi: roster có ghi + trường interrupted; thu bài gán timeout/closed)"
     ],
     "dependents": [
-      "web.student pages /thi/* (polling state 3s, đồng hồ từ serverNow)",
-      "web.teacher pages /giao-vien/* (roster polling 3s)",
-      "student session cookie quiq_stu (phiên chỉ-xem sau thu bài)",
-      "staff session cookie quiq_session (staffGuard, requireTenant)"
+      "Trang kết quả học sinh /thi/[code]/ket-qua: endReason của bài quá hạn khi giáo viên thu bài hoặc mở roster nay là timeout (trước là closed)",
+      "Luồng học sinh enter/start/submit: sau commit phát tín hiệu hub (không đổi response)",
+      "Phiên giáo viên quiq_session: stream kiểm phiên trước mỗi lần đẩy, không gia hạn hạn 8 giờ",
+      "GET .../roster polling 3 giây vẫn là đường dự phòng của web khi SSE lỗi"
     ],
     "regression": [
-      "Luồng học sinh Layer 2 (enter → state → start → save → submit → result): Layer 3 đã sửa attempts/start.ts (khóa exam_classes FOR UPDATE) và student-session.ts (phiên chỉ-xem khi lớp đã thu bài)",
-      "Đăng nhập cán bộ Layer 2 (login/me/logout, 429, 403 trường khóa)",
-      "Bài DEMO01 vẫn thi được sau db:seed:demo --reset-attempts",
-      "GET /api/health, GET /api/health/db"
+      "flow-1.student-full-flow: enter → state → start → save → submit → result; student/service.ts và attempts/service.ts vừa thêm lời gọi phát tín hiệu sau commit",
+      "flow-2.lazy-timeout: 409 ATTEMPT_ENDED + endReason=timeout sau ends_at + 3s (nay roster cũng kích hoạt cùng logic)",
+      "flow-3.student-enter-rejections: STUDENT_NOT_ALLOWED, EXAM_NOT_FOUND, SCHOOL_LOCKED, EXAM_NOT_DISPATCHED, EXAM_CLOSED, ATTEMPT_IN_PROGRESS, ATTEMPT_ALREADY_COMPLETED",
+      "flow-4.teacher-create-exam: classes, bank-counts, create (422/403), list, detail, delete (409)",
+      "flow-6.question-bank: CRUD, lọc, phân trang 25, validate 422",
+      "flow-7.isolation-and-permissions: chéo giáo viên/trường → 404, super_admin → 403, học sinh A ↔ B → 404 (áp dụng thêm cho /stream, xem flow-10)",
+      "flow-8.staff-auth: 401 chung, 429 lần thứ 6, 403 trường khóa, me, logout (guards.ts vừa thêm createSessionCheck)",
+      "flow-9.health: /api/health, /api/health/db"
     ]
   },
   "flows": [
     {
-      "id": "flow-1.student-full-flow",
+      "id": "flow-10.roster-sse-stream",
+      "status": "new",
       "priority": "high",
-      "specRefs": ["FR-040", "FR-033", "FR-036", "FR-042", "FR-046", "FR-050", "FR-051", "BR-001", "BR-007", "BR-008"],
+      "specRefs": ["FR-035", "C-12"],
+      "endpoints": ["GET /api/teacher/exams/:examId/classes/:classId/stream"],
+      "checks": [
+        "Header: Content-Type text/event-stream; charset=utf-8, Cache-Control no-cache, no-transform, Connection keep-alive, X-Accel-Buffering no; không nén",
+        "Mở luồng: comment ': open' rồi ngay 'event: roster' với data = RosterView giống hệt GET .../roster tại cùng thời điểm (ảnh chụp đầu)",
+        "Học sinh vào phòng chờ / Bắt đầu / nộp / hết giờ, giáo viên phát đề / thu bài → nhận 'event: roster' mới trong ≤ 1 giây (đo staging: ~0,8-0,9 giây sau khi request gây đổi trả về)",
+        "Nhiều tín hiệu dồn trong ~250 ms gộp thành một lần gửi",
+        "Không có thay đổi: vẫn gửi lại roster mỗi ~10 giây kèm comment ': keepalive'; học sinh hết presence 15 giây rời 'Đang chờ' ở nhịp tính lại",
+        "Chưa đăng nhập → 401 trả JSON (không mở luồng); giáo viên khác / trường khác / id không phải uuid → 404 JSON; super_admin → 403",
+        "Kiểm phiên trước mỗi lần đẩy: logout, phiên bị thu hồi, hết hạn 8 giờ, tài khoản tắt, trường khóa, mất quyền với lớp → server đóng luồng, không gửi sự kiện lỗi (smoke staging: logout → đóng sau ~4,5 giây; trần ~10 giây theo nhịp)",
+        "Mở SSE không gia hạn phiên: phiên vẫn hết sau 8 giờ kể từ lúc đăng nhập/gia hạn cuối",
+        "Client đọc chậm, đệm chưa gửi > 1 MB → server cắt kết nối",
+        "Client đóng kết nối → hub gỡ người nghe, không còn interval (không rò bộ nhớ)"
+      ]
+    },
+    {
+      "id": "flow-11.roster-expiry-and-close-reason",
+      "status": "new",
+      "priority": "high",
+      "specRefs": ["FR-041", "FR-034", "FR-035"],
       "endpoints": [
-        "POST /api/student/enter",
-        "GET /api/student/state",
-        "POST /api/student/attempts",
-        "GET /api/student/attempts/:id",
-        "PUT /api/student/attempts/:id/answers",
-        "POST /api/student/attempts/:id/submit",
+        "GET /api/teacher/exams/:examId/classes/:classId/roster",
+        "GET /api/teacher/exams/:examId/classes/:classId/stream",
+        "POST /api/teacher/exams/:examId/classes/:classId/close",
         "GET /api/student/attempts/:id/result"
       ],
       "checks": [
-        "Payload đề (ExamPaperView) không chứa is_correct hay đáp án đúng",
-        "AttemptResultView không chứa câu đã chọn hay đáp án đúng",
-        "Điểm thang 10, làm tròn 2 chữ số; đúng một phần = sai; bỏ trống = sai; sai không trừ",
-        "Nhảy câu, sửa đáp án tới lúc nộp (upsert theo câu)",
-        "Mỗi học sinh có thứ tự câu và đáp án khác nhau; chấm theo đáp án gốc",
-        "Nộp lại không đổi điểm (idempotent); lưu đáp án sau khi nộp bị từ chối",
-        "GET /api/student/attempts/:id dùng để tải lại trang giữ đáp án đã lưu",
-        "GET .../result trước khi nộp → 409 ATTEMPT_NOT_FINISHED"
-      ]
-    },
-    {
-      "id": "flow-2.lazy-timeout",
-      "priority": "high",
-      "specRefs": ["FR-041", "BR-007"],
-      "endpoints": ["PUT /api/student/attempts/:id/answers", "GET /api/student/state", "GET /api/student/attempts/:id/result"],
-      "checks": [
-        "Request sau ends_at + 3s tự nộp bằng các câu đã lưu, trả 409 ATTEMPT_ENDED",
-        "Kết quả có endReason=timeout",
-        "ends_at tính theo giờ máy chủ (serverNow), không theo giờ máy client"
-      ]
-    },
-    {
-      "id": "flow-3.student-enter-rejections",
-      "priority": "high",
-      "specRefs": ["FR-040", "FR-032", "FR-033", "BR-014", "FR-001", "FR-043", "BR-004", "BR-006"],
-      "endpoints": ["POST /api/student/enter", "POST /api/student/attempts"],
-      "checks": [
-        "Mã học sinh sai / vô hiệu / lớp khác / trường khác → cùng 404 STUDENT_NOT_ALLOWED (một thông điệp chung)",
-        "Mã bài thi không tồn tại → 404 EXAM_NOT_FOUND",
-        "Trường bị khóa → 403 SCHOOL_LOCKED",
-        "Lớp chưa phát đề: vào được phòng chờ, Bắt đầu → 409 EXAM_NOT_DISPATCHED",
-        "Lớp đã thu bài: vào được nhưng chỉ phiên chỉ-xem (state phase=closed), Bắt đầu → 409 EXAM_CLOSED",
-        "Học sinh đang in_progress vào từ máy khác (không cookie) → 409 ATTEMPT_IN_PROGRESS (hành vi tạm, xem knownIssues G-04)",
-        "Đã hoàn thành → Bắt đầu lại → 409 ATTEMPT_ALREADY_COMPLETED"
-      ]
-    },
-    {
-      "id": "flow-4.teacher-create-exam",
-      "priority": "high",
-      "specRefs": ["FR-030", "FR-031", "FR-032", "BR-002", "BR-003"],
-      "endpoints": [
-        "GET /api/teacher/exams/classes",
-        "GET /api/teacher/exams/bank-counts",
-        "POST /api/teacher/exams",
-        "GET /api/teacher/exams",
-        "GET /api/teacher/exams/:id",
-        "DELETE /api/teacher/exams/:id"
-      ],
-      "checks": [
-        "Ngân hàng thiếu câu ở bất kỳ mức → 422 INSUFFICIENT_QUESTIONS kèm details{difficulty,have,need}, không tạo hàng nào",
-        "drawConfig sai (tổng ≠ dễ+TB+khó) → 422 INVALID_DRAW_CONFIG",
-        "Gán lớp không thuộc phân công → 403 CLASS_NOT_ASSIGNED",
-        "Mã bài thi 6 ký tự, không có 0 O 1 I L, duy nhất toàn hệ thống; link /thi/<mã>",
-        "Đề là bản sao: sửa/xóa câu ngân hàng sau đó không đổi đề đã ra",
-        "Xóa đề đã có người thi → 409 EXAM_HAS_ATTEMPTS; đề chưa ai thi xóa được",
-        "GET /api/teacher/exams/:id có đáp án đúng nhưng chỉ cho giáo viên chủ đề"
+        "Sửa G-12: GET .../roster (và mỗi lần stream tính roster) có GHI: attempt in_progress đã quá ends_at + 3s được tự nộp bằng các câu đã lưu với endReason=timeout trước khi tính trạng thái",
+        "Học sinh quá giờ rồi đóng trình duyệt không còn hiện 'Đang làm'; hiện 'Đã nộp' với điểm đúng",
+        "Thu bài: bài in_progress đã quá ends_at (+3s) → endReason=timeout; bài còn giờ → endReason=closed; cả hai vẫn có điểm",
+        "Trang kết quả học sinh hiện đúng lý do kết thúc theo hai trường hợp trên",
+        "Điểm không đổi so với trước (chỉ đổi lý do kết thúc)"
       ]
     },
     {
       "id": "flow-5.class-control",
+      "status": "changed",
       "priority": "high",
       "specRefs": ["FR-033", "FR-034", "FR-035", "FR-014", "BR-006"],
       "endpoints": [
@@ -152,143 +118,83 @@
         "Phát đề chụp snapshot max_attempts/warn_limit/interrupt_secs của trường; phát lặp → 409 CLASS_ALREADY_DISPATCHED; phát lớp đã thu → 409 CLASS_ALREADY_CLOSED",
         "Thu bài lớp nháp → 409 CLASS_NOT_DISPATCHED",
         "Thu bài: thu hồi mọi phiên học sinh của lớp, finalize bài đang làm (finalizedAttempts), gọi lại vẫn 200 (idempotent)",
-        "Học sinh đang làm khi bị thu bài: lưu đáp án nhận 401, sang trang kết quả endReason=closed, vẫn thấy điểm (C-07)",
+        "ĐỔI: lý do kết thúc khi thu bài là timeout cho bài đã quá hạn, closed cho bài còn giờ (xem flow-11)",
+        "Học sinh đang làm khi bị thu bài: lưu đáp án nhận 401, sang trang kết quả, vẫn thấy điểm (C-07)",
         "Học sinh ở phòng chờ khi thu bài: state phase=closed",
-        "Roster polling: 4 trạng thái not_started|waiting|in_progress|submitted, attemptsUsed, bestScore, counts; 'waiting' = presence trong 15 giây"
+        "Roster: 4 trạng thái not_started|waiting|in_progress|submitted, attemptsUsed, bestScore, counts, serverNow; 'waiting' = presence trong 15 giây",
+        "MỚI: mỗi học sinh có trường interrupted (boolean); hiện luôn false vì Layer 7 mới sinh attempt interrupted",
+        "ĐỔI: GET .../roster không còn chỉ đọc (có thể finalize bài quá hạn, xem flow-11)"
       ]
     },
     {
-      "id": "flow-6.question-bank",
+      "id": "flow-12.web-live-roster",
+      "status": "new",
       "priority": "medium",
-      "specRefs": ["FR-020", "FR-022", "FR-023", "FR-024", "BR-002", "BR-017"],
-      "endpoints": [
-        "GET /api/teacher/questions",
-        "POST /api/teacher/questions",
-        "GET /api/teacher/questions/:id",
-        "PUT /api/teacher/questions/:id",
-        "DELETE /api/teacher/questions/:id"
-      ],
+      "specRefs": ["FR-035"],
+      "endpoints": ["GET .../stream (EventSource)", "GET .../roster (fallback polling)"],
       "checks": [
-        "CRUD đầy đủ; lọc difficulty easy|medium|hard; trang 25 câu, mới nhất trước; stats không theo bộ lọc",
-        "Validate 422: 1 đáp án, 5 đáp án, không có đáp án đúng, multiSelect=false mà nhiều đáp án đúng, nội dung rỗng (details[{path,message}])",
-        "Môn lấy từ tài khoản giáo viên, client gửi subjectId bị bỏ qua (BR-017)",
-        "Sửa/xóa câu không đổi đề đã ra (BR-002)"
-      ]
-    },
-    {
-      "id": "flow-7.isolation-and-permissions",
-      "priority": "high",
-      "specRefs": ["BR-015", "FR-024", "BR-014"],
-      "endpoints": ["/api/teacher/questions/*", "/api/teacher/exams/*", "/api/student/attempts/:id/*"],
-      "checks": [
-        "Giáo viên A truy cập câu hỏi/bài thi/lớp của giáo viên B hoặc trường khác → 404",
-        "id không phải uuid → 404",
-        "super_admin gọi route giáo viên → 403",
-        "Học sinh A đọc/sửa/nộp attempt của học sinh B → 404",
-        "Không có cookie phiên học sinh → 401 STUDENT_SESSION_REQUIRED; không có quiq_session → 401 UNAUTHENTICATED"
-      ]
-    },
-    {
-      "id": "flow-8.staff-auth",
-      "priority": "high",
-      "specRefs": ["FR-002", "BR-012", "FR-001"],
-      "endpoints": ["POST /api/auth/login", "GET /api/auth/me", "POST /api/auth/logout"],
-      "checks": [
-        "Sai tên / sai mật khẩu / tài khoản vô hiệu → cùng 401 INVALID_CREDENTIALS",
-        "Lần sai thứ 6 → 429 LOGIN_THROTTLED + header Retry-After",
-        "Trường bị khóa → 403 SCHOOL_LOCKED",
-        "logout idempotent, xóa cookie; /me sau logout → 401",
-        "Không có route tự đăng ký (BR-012)"
-      ]
-    },
-    {
-      "id": "flow-9.health",
-      "priority": "low",
-      "specRefs": [],
-      "endpoints": ["GET /api/health", "GET /api/health/db"],
-      "checks": [
-        "/api/health → 200 {status:ok}",
-        "/api/health/db → 200 {status:ok, db:up}; DB lỗi → 503 DB_UNAVAILABLE với thông điệp chung"
+        "/giao-vien/phong-thi: bảng + KPI cập nhật qua SSE, không cần polling; huy hiệu 'Trực tiếp'",
+        "Watchdog: chưa nhận ảnh chụp đầu sau 5 giây, hoặc im lặng 25 giây, hoặc EventSource lỗi → chuyển polling 3 giây, huy hiệu 'Đang kết nối lại', thử lại SSE sau 10 giây",
+        "Chỉ một nguồn dữ liệu tại một thời điểm (không vừa SSE vừa polling)",
+        "Đổi lớp hoặc rời trang → đóng EventSource",
+        "Cờ gián đoạn hiển thị khi interrupted=true (chưa có dữ liệu thật tới Layer 7)",
+        "Chỉ desktop, tiếng Việt, không em-dash"
       ]
     }
   ],
-  "endpointCount": 26,
+  "endpointCount": 27,
+  "newEndpoints": ["GET /api/teacher/exams/:examId/classes/:classId/stream"],
+  "changedEndpoints": [
+    "GET /api/teacher/exams/:examId/classes/:classId/roster (có ghi: tự nộp bài quá ends_at + 3s; thêm students[].interrupted)",
+    "POST /api/teacher/exams/:examId/classes/:classId/close (endReason timeout cho bài quá hạn, closed cho bài còn giờ)"
+  ],
   "uiSmoke": {
     "platform": "desktop only (spec NFR: không mobile), tiếng Việt",
-    "routes": [
-      "/thi",
-      "/thi/[code]",
-      "/thi/[code]/phong-cho",
-      "/thi/[code]/lam-bai",
-      "/thi/[code]/ket-qua",
-      "/dang-nhap",
-      "/giao-vien/ngan-hang",
-      "/giao-vien/bai-thi",
-      "/giao-vien/phong-thi"
-    ],
+    "routes": ["/giao-vien/phong-thi", "/thi/[code]/ket-qua"],
     "notes": [
-      "Trang kết quả: nút 'Xem đáp án' chỉ hiện thông báo 'Giáo viên chưa công bố đáp án' (client, chưa gọi API) — đúng kế hoạch, bản đầy đủ ở Layer 5",
-      "Trạng thái cập nhật bằng polling 3 giây, không phải realtime SSE (Layer 4)"
+      "/giao-vien/phong-thi: huy hiệu 'Trực tiếp' / 'Đang kết nối lại'; mở 2 cửa sổ (giáo viên + học sinh) để thấy roster đổi trong ≤ 1 giây",
+      "Học sinh vẫn polling state 3 giây (SSE chỉ dành cho giáo viên)",
+      "Các route UI khác của scope v1 chạy như regression"
     ]
   },
   "coverage": {
-    "covered": [
-      "FR-020", "FR-022", "FR-023", "FR-024", "FR-030", "FR-031", "FR-032", "FR-033", "FR-036",
-      "FR-040", "FR-042", "FR-046", "FR-050", "FR-051",
-      "BR-001", "BR-002", "BR-003", "BR-006", "BR-007", "BR-008", "BR-012", "BR-014"
+    "changed": [
+      { "id": "FR-035", "from": "partial (roster polling 3 giây)", "to": "covered theo task review STRICT PASS (SSE trực tiếp + polling dự phòng); cờ gián đoạn chỉ có trường dữ liệu, dữ liệu thật ở Layer 7; chưa có phase review spec-validator cho Layer 4" },
+      { "id": "FR-041", "from": "partial", "to": "partial (roster/thu bài nay kiểm hết giờ lười; sweeper nền vẫn để Layer 6)" },
+      { "id": "FR-034", "from": "partial", "to": "partial (thu bài gán đúng timeout/closed; nhánh gián đoạn → điểm cao nhất vẫn để Layer 7)" }
     ],
-    "partial": [
-      { "id": "FR-034", "built": "thu bài tay: đóng lớp, thu hồi phiên, finalize bài đang làm", "deferred": "nhánh đang gián đoạn → điểm cao nhất", "deferredTo": "Layer 7" },
-      { "id": "FR-035", "built": "roster polling 4 trạng thái", "deferred": "SSE realtime, presence, cờ gián đoạn", "deferredTo": "Layer 4" },
-      { "id": "FR-041", "built": "đồng hồ giờ máy chủ, hết giờ kiểm lười khi có request", "deferred": "sweeper nền", "deferredTo": "Layer 6" },
-      { "id": "FR-047", "built": "thông báo 'chưa công bố đáp án' ở client", "deferred": "xem đề + đáp án sau công bố, API kiểm answers_published_at", "deferredTo": "Layer 5" },
-      { "id": "FR-014", "built": "snapshot 3 thiết lập lúc phát đề", "deferred": "màn chỉnh thiết lập của admin trường", "deferredTo": "Layer 11" },
-      { "id": "FR-002", "built": "đăng nhập cán bộ", "deferred": "tạo tài khoản, đặt lại mật khẩu", "deferredTo": "Layer 8, Layer 12" }
-    ],
-    "touchedPartial": [
-      { "id": "FR-001", "built": "trường khóa chặn đăng nhập cán bộ và vào thi", "deferredTo": "Layer 12 (tạo/khóa trường)" },
-      { "id": "FR-043", "built": "DB bảo đảm một in_progress mỗi học sinh; vào từ máy khác → 409", "deferredTo": "Layer 7 (đổi máy, takeover)" },
-      { "id": "BR-004", "built": "một mã một bài tại một thời điểm", "deferredTo": "Layer 7" },
-      { "id": "BR-005", "built": "canStartAttempt xét max_attempts snapshot; thực tế chỉ làm một lần (chưa có gián đoạn)", "deferredTo": "Layer 7" },
-      { "id": "BR-015", "built": "cô lập trường ở mức code (staffGuard, lọc schoolId)", "deferredTo": "Layer 17 (quét tự động)" },
-      { "id": "BR-017", "built": "môn lấy từ tài khoản giáo viên", "deferredTo": "Layer 8 (tạo tài khoản kèm môn)" }
-    ]
+    "unchangedNote": "Covered/partial khác giữ như scope v1"
   },
   "acceptance": [
-    "Luồng demo trọn vẹn: giáo viên tạo câu hỏi → tạo bài thi → phát đề → học sinh vào thi, làm, nộp, thấy điểm → giáo viên thu bài, roster đúng 4 trạng thái",
-    "Đáp án đúng không bao giờ xuất hiện trong response cho học sinh (NFR Security, C-11)",
-    "Điểm = (đúng ÷ tổng) × 10, làm tròn 2 chữ số; đúng một phần = sai",
-    "Mọi lỗi theo envelope chung với mã lỗi trong docs/API_SPEC.md §Mã lỗi",
-    "Giáo viên/học sinh không truy cập được tài nguyên của người khác hoặc trường khác (404/403)",
-    "Bài đã nộp không sửa được; nộp lại không đổi điểm",
-    "Thu bài idempotent; sau thu bài không bắt đầu được nữa"
+    "Giáo viên ở phòng thi thấy trạng thái học sinh đổi trong ≤ 1 giây khi học sinh vào phòng chờ, bắt đầu, nộp, hết giờ, hoặc khi giáo viên phát đề / thu bài",
+    "Ảnh chụp đầu của stream khớp GET .../roster",
+    "Stream không lộ dữ liệu lớp của giáo viên/trường khác (404) và đóng khi phiên giáo viên không còn hợp lệ",
+    "Mất SSE thì web tự về polling 3 giây và tự kết nối lại",
+    "Roster không còn hiện 'Đang làm' cho bài quá ends_at + 3s; thu bài gán timeout/closed đúng; điểm không đổi",
+    "Mọi luồng của scope v1 vẫn PASS (regression)"
   ],
-  "risk": "high",
-  "riskReason": "Verify đều PASS (417/417 test, typecheck/lint/build, E2E API thật 30/30), nhưng đây là scope đầu tiên: template TEST chưa có test nào; phạm vi chạm toàn bộ vùng rủi ro đỏ (auth, phiên cookie, cô lập trường, chấm điểm, khóa đồng thời); còn 13 gap mở (G-01 MAJOR prod); RLS/anon trên Supabase chưa kiểm.",
+  "risk": "medium",
+  "riskReason": "Phạm vi hẹp (một endpoint mới + roster/thu bài) và đã verify kỹ: 439/439 test, typecheck/lint/build PASS, review STRICT PASS round 2, smoke SSE trên Supabase thật. Không lên high vì không đổi schema/API cũ ngoài thêm trường. Không hạ low vì: kết nối dài hạn kiểm phiên mỗi lần đẩy (auth), GET roster nay có ghi (finalize attempt), đổi lý do kết thúc attempt, và vài nhánh SSE chưa có test (G-17); chưa giới hạn số kết nối (G-16); hub một tiến trình (G-15).",
   "verification": {
-    "unitIntegration": "33 file, 417/417 PASS (Vitest + PGlite) trên staging 471f3f9",
+    "unitIntegration": "439/439 PASS (Vitest + PGlite) trên staging 95ae75f",
     "staticChecks": "typecheck, lint, build PASS",
-    "e2eApi": "30/30 PASS trên Supabase thật (journal .context/runs/start-quiq-layer-3-task-02.md)",
-    "smoke": "Layer 2: đăng nhập cán bộ + student enter/state; health/db PASS",
-    "phaseReview": ".context/review-reports/phase-build-quiq-demo-layer-0-3-spec-validation.md (PASS: 22 Covered, 6 Partial, 0 Missing)"
+    "review": ".context/review-reports/feature-build-quiq-layer-4-task-01-round-2-review.md (STRICT, PASS round 2)",
+    "smoke": "SSE trên Supabase thật: sự kiện tới ~0,8-0,9 giây sau khi request gây đổi trả về; logout → server đóng luồng sau ~4,5 giây",
+    "spikeRewrite": "Qua rewrite Next dev: ≤ 6 ms, không nén",
+    "phaseReview": "chưa có phase review spec-validator cho Layer 4"
   },
   "testData": {
-    "seed": "pnpm --filter @quiq/db db:seed:demo (idempotent)",
-    "reset": "pnpm --filter @quiq/db db:seed:demo --reset-attempts — xóa MỌI attempt, phiên học sinh, phòng chờ của trường demo (kể cả của bài YAH2B8) và mở lại DEMO01 về dispatched; KHÔNG mở lại các bài khác (YAH2B8 vẫn closed)",
-    "school": "Trường THPT Demo (maxAttempts 3, warnLimit 2, interruptSecs 60)",
-    "staff": "superadmin, admin.demo, gv.toan (giáo viên môn cố định); mật khẩu = hằng DEMO_PASSWORD trong packages/db/src/seed/demo.ts",
-    "class": "10A1, một năm học",
-    "students": ["HS001", "HS002", "HS003", "HS004", "HS005"],
-    "exam": "DEMO01: 10 câu, 15 phút, đã phát cho 10A1",
-    "questions": "30 câu của gv.toan",
-    "leftoverOnStaging": "Bài '[Thử tự động] E2E Layer 3' mã YAH2B8 (5 câu, đã thu bài) có attempt của HS002 (đã nộp) và HS003 (finalize khi thu bài). Không phải dữ liệu lỗi; đừng nhầm với DEMO01. Attempt HS002/HS003 đang có có thể ảnh hưởng test 'xóa đề' và roster nếu dùng bài này.",
-    "limitations": [
-      "Seed chỉ có 1 trường, 1 giáo viên, mọi học sinh cùng lớp 10A1: test giáo viên A vs B, khác trường, học sinh lớp khác, trường bị khóa (SCHOOL_LOCKED) cần fixture DB riêng — chưa có UI/API admin tới Layer 8-12",
-      "Test hết giờ: đừng chờ 15 phút của DEMO01; tạo bài 1 phút qua POST /api/teacher/exams rồi phát đề",
-      "Test khóa đăng nhập (429 lần thứ 6) khóa username 15 phút: dùng username không phải gv.toan hoặc chạy cuối; bộ đếm trong tiến trình (G-02c) nên restart API là xóa",
-      "Mỗi học sinh chỉ làm được 1 lần mỗi bài (chưa có gián đoạn): chạy --reset-attempts giữa các lượt test DEMO01, hoặc tạo bài mới",
-      "Học sinh đang in_progress mà mất cookie bị khóa tới khi hết giờ hoặc giáo viên thu bài (G-04)"
-    ]
+    "seed": "pnpm --filter @quiq/db db:seed:demo (idempotent), giống scope v1",
+    "reset": "pnpm --filter @quiq/db db:seed:demo --reset-attempts (xem scope v1: chỉ mở lại DEMO01)",
+    "streamClient": "Gọi stream cần cookie quiq_session của gv.toan; dùng client đọc luồng (vd curl -N kèm cookie, hoặc EventSource) thay vì đợi response kết thúc",
+    "tips": [
+      "Test G-12/hết giờ: tạo bài 1 phút qua POST /api/teacher/exams, phát đề, cho học sinh Bắt đầu rồi bỏ, chờ quá ends_at + 3s, mở roster hoặc stream",
+      "Test lý do thu bài: một học sinh còn giờ + một học sinh đã quá hạn trong cùng lớp, rồi thu bài; kiểm endReason từng bài",
+      "Test đóng luồng khi logout: mở stream, POST /api/auth/logout bằng cùng cookie, đo thời gian tới khi server đóng (≤ ~10 giây)",
+      "Test 'không gia hạn phiên' và 'tài khoản tắt khi đang stream' cần fixture DB/đồng hồ riêng (G-17)",
+      "Chạy nhiều instance API thì sự kiện chỉ tới giáo viên nối vào cùng instance (G-15): test trực tiếp trên 1 instance"
+    ],
+    "limitations": "Như scope v1 (1 trường, 1 giáo viên, 1 lớp; test chéo giáo viên/trường cần fixture DB riêng)"
   },
   "knownIssues": [
     { "id": "G-01", "severity": "MAJOR (prod)", "expectedBehavior": "Giới hạn đăng nhập thực chất chỉ theo username (ctx.ip luôn là IP proxy); người lạ khóa được tài khoản 15 phút", "target": "Layer 17 / trước deploy" },
@@ -301,16 +207,27 @@
     { "id": "G-09", "severity": "MINOR", "expectedBehavior": "Cửa sổ hẹp có thể cấp phiên hiệu lực ở lớp vừa thu bài; Bắt đầu vẫn trả 409 EXAM_CLOSED", "target": "Layer 7" },
     { "id": "G-10", "severity": "NIT", "expectedBehavior": "Hai lần xóa đồng thời cùng đề có thể deadlock (Postgres hủy một bên)", "target": "Layer 17" },
     { "id": "G-11", "severity": "NIT", "expectedBehavior": "Lớp kẹt (thu bài lỗi giữa chừng): POST submit bằng phiên chỉ-xem ghi endReason=submitted thay vì closed", "target": "Layer 6" },
-    { "id": "G-12", "severity": "MINOR", "expectedBehavior": "Roster vẫn hiện 'Đang làm' cho học sinh quá ends_at mà đã đóng trình duyệt; thu bài ghi endReason=closed cho bài đã quá hạn (đúng ra timeout). Điểm không sai", "target": "Layer 6" },
     { "id": "G-13", "severity": "NIT", "expectedBehavior": "Kiểm học sinh thuộc lớp chưa lọc theo năm học (demo chỉ 1 năm học)", "target": "Layer 9" },
     { "id": "G-14", "severity": "MINOR", "expectedBehavior": "student_sessions chưa có TTL: phiên phòng chờ của lớp chưa thu bài sống mãi", "target": "Layer 17" },
+    { "id": "G-15", "severity": "MINOR (scale)", "expectedBehavior": "SSE hub chạy trong một tiến trình: nhiều instance API thì giáo viên chỉ nhận tín hiệu của instance mình; polling dự phòng 3 giây vẫn đúng nhưng mất tính trực tiếp", "target": "trước khi chạy nhiều instance" },
+    { "id": "G-16", "severity": "MINOR", "expectedBehavior": "Chưa giới hạn số kết nối SSE (theo giáo viên/tổng); mỗi kết nối giữ 1 listener + 1 interval và truy vấn phiên + roster mỗi ~10 giây", "target": "Layer 17" },
+    { "id": "G-17", "severity": "NIT", "expectedBehavior": "Chưa có test cho: tài khoản bị tắt khi đang stream; 'không gia hạn phiên'; vượt đệm 1 MB với socket nghẽn thật. Sau khi phiên hỏng, web vẫn polling 3 giây + thử SSE mỗi 10 giây (nhận 401 lặp lại là hành vi đã biết)", "target": "Layer 17" },
     { "id": "RESIDUAL-RLS", "severity": "unverified", "expectedBehavior": "RLS và quyền anon trên Supabase (migration 0001_lock_down_public_roles.sql) chưa được kiểm; cần smoke trên staging, chưa coi là bug", "target": "smoke staging" }
   ],
-  "knownIssuesSource": "docs/changes/TECHNICAL_REQUIREMENT_GAPS.md (G-06 đã resolved, phần TTL còn lại là G-14)",
+  "knownIssuesDelta": {
+    "removed": [{ "id": "G-12", "reason": "resolved ở Layer 4 (d840832): roster kiểm hết giờ lười, thu bài gán timeout cho bài quá hạn; test lại bằng flow-11" }],
+    "added": ["G-15", "G-16", "G-17"]
+  },
+  "knownIssuesSource": "docs/changes/TECHNICAL_REQUIREMENT_GAPS.md (G-06, G-12 đã resolved)",
   "outOfScope": {
     "note": "Chưa build — test KHÔNG coi việc thiếu các tính năng dưới đây là bug (tasks/build-quiq/_layer-plan.md §3)",
+    "layer4Remaining": [
+      "SSE cho học sinh (học sinh vẫn polling state 3 giây)",
+      "Heartbeat HTTP 5 giây và đo gián đoạn (C-12 phần heartbeat, FR-045) → Layer 6/7",
+      "Dữ liệu thật cho cờ interrupted → Layer 7",
+      "Pub/sub nhiều instance (G-15)"
+    ],
     "deferred": [
-      { "layer": 4, "feature": "SSE theo dõi trực tiếp, presence phòng chờ, cờ gián đoạn", "refs": ["FR-035"] },
       { "layer": 5, "feature": "Công bố đáp án / bảng điểm, Xem đáp án đầy đủ, tra cứu điểm công khai", "refs": ["FR-037", "FR-038", "FR-047", "FR-064", "BR-010", "BR-013"] },
       { "layer": 6, "feature": "Chống gian lận (rời tab, toàn màn hình, cảnh báo, tự nộp), sweeper nền, heartbeat", "refs": ["FR-044", "FR-041", "FR-034", "BR-009"] },
       { "layer": 7, "feature": "Gián đoạn, làm lại, giới hạn số lần, đẩy máy + nhật ký", "refs": ["FR-043", "FR-045", "BR-004", "BR-005"] },
@@ -328,11 +245,13 @@
     "notBuiltScreens": "Mọi màn admin trường / admin tổng; /tra-cuu; xem đáp án sau công bố; xuất Excel; ảnh câu hỏi"
   },
   "sources": [
-    "SPECIFICATIONS.md (v1.0.0)",
-    "docs/API_SPEC.md (as-built sau Layer 3)",
-    "docs/changes/TECHNICAL_REQUIREMENT_GAPS.md",
-    "tasks/build-quiq/_layer-plan.md",
-    ".context/review-reports/phase-build-quiq-demo-layer-0-3-spec-validation.md §6",
-    "spec/updates/2026-11-26-initial-build-demo.md"
+    "SPECIFICATIONS.md (v1.0.0: FR-035, C-12)",
+    "docs/API_SPEC.md (as-built sau Layer 4: roster, stream)",
+    "docs/DESIGN.md (as-built: use-roster, watchdog)",
+    "docs/changes/TECHNICAL_REQUIREMENT_GAPS.md (G-12 resolved, G-15..G-17)",
+    "tasks/build-quiq/layer-4-task-01.md",
+    "commits d840832, 95ae75f",
+    ".context/review-reports/feature-build-quiq-layer-4-task-01-round-2-review.md",
+    "spec/updates/2026-11-26-layer-4-live-roster.md"
   ]
 }
