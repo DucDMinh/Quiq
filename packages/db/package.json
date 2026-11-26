@@ -4,10 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:seed:demo": "tsx src/seed/run.ts",
+    "db:seed:superadmin": "tsx src/seed/superadmin.ts"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./security": "./src/security/password.ts",
+    "./testing": "./src/testing.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.6.0",
