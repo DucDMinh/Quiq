@@ -14,8 +14,22 @@ export interface Clock {
 
 export const systemClock: Clock = { now: () => new Date() };
 
+/** Cấu hình phiên cán bộ (cookie `quiq_session`). */
+export interface SessionConfig {
+  /** Khóa HMAC băm token phiên trước khi lưu DB (từ SESSION_SECRET). */
+  secret: string;
+  /** Gắn cờ `Secure` cho cookie (production, TLS kết thúc ở proxy phía trước). */
+  secureCookie: boolean;
+}
+
 export interface AppDeps {
   /** postgres-js ở staging/prod, PGlite ở test; cùng một kiểu `DatabaseLike`. */
   db: DatabaseLike;
   clock: Clock;
+  /**
+   * Tùy chọn để `createApp({ deps: { db, clock } })` cũ vẫn chạy cho module không cần phiên.
+   * Thiếu thì mọi route cần phiên cán bộ trả 500 (đóng chặt), không bao giờ dùng khóa mặc định.
+   * server.ts luôn truyền; createTestApp truyền khóa test.
+   */
+  session?: SessionConfig;
 }
