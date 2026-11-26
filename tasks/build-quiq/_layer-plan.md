@@ -46,7 +46,7 @@ L0-01
 
 | Layer | Tính năng | FR/BR chính |
 |---|---|---|
-| 4 | Theo dõi trực tiếp: SSE, phòng chờ có presence, 4 trạng thái + cờ gián đoạn (kèm spike SSE qua Next rewrite) | FR-035 |
+| 4 | Theo dõi trực tiếp: SSE, phòng chờ có presence, 4 trạng thái + cờ gián đoạn (kèm spike SSE qua Next rewrite). **Đã ghi task:** `layer-4-task-01.md` (kèm sửa G-12), user chốt 2026-11-26 | FR-035 |
 | 5 | Công bố đáp án / công bố bảng điểm (hai nút riêng), học sinh "Xem đáp án", tra cứu điểm công khai | FR-037, 038, 047, 064, BR-010, 013 |
 | 6 | Chống gian lận: rời tab/toàn màn hình, cảnh báo, tự nộp quá ngưỡng; sweeper nền (hết giờ, thu bài); heartbeat | FR-044, 041, 034, BR-009 |
 | 7 | Gián đoạn, làm lại, giới hạn số lần, đẩy máy + nhật ký | FR-043, 045, BR-004, 005 |
