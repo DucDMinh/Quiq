@@ -27,10 +27,10 @@ function resolveDatabaseUrlOrExplain(): string {
 
 async function main(): Promise<void> {
   loadLocalEnvFile();
+  // Thiếu SESSION_SECRET hay chuỗi kết nối thì dừng ngay, trước khi mở cổng.
   const config = loadConfig();
-  // Thiếu chuỗi kết nối thì dừng ngay, trước khi mở cổng.
   const dbHandle = createDb({ url: resolveDatabaseUrlOrExplain() });
-  const app = await createApp({ deps: { db: dbHandle.db, clock: systemClock } });
+  const app = await createApp({ deps: { db: dbHandle.db, clock: systemClock, session: config.session } });
 
   const server = app.listen(config.port, () => {
     console.log(`[api] http://localhost:${config.port}/api/health  (kiểm tra DB: /api/health/db)`);
