@@ -3,6 +3,12 @@ import { z } from "zod";
 const MAX_CODE_LENGTH = 64;
 
 /**
+ * Học sinh "đang chờ" khi phòng chờ ghi `waiting_presence.last_seen_at` trong khoảng này (phòng chờ hỏi
+ * trạng thái mỗi 3 giây). Dùng chung cho phía học sinh và bảng trạng thái lớp của giáo viên.
+ */
+export const WAITING_PRESENCE_FRESH_SECONDS = 15;
+
+/**
  * Mã bài thi học sinh gõ hoặc dán: bỏ mọi khoảng trắng, không phân biệt hoa thường (so khớp bằng `upper`),
  * dán nguyên link `.../thi/<mã>/...` vẫn lấy đúng mã. Web và API dùng chung một hàm.
  */

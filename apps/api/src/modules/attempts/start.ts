@@ -61,6 +61,9 @@ type LoadQuestions = (tx: DatabaseLike, examId: string) => Promise<PaperQuestion
 
 async function insertAttempt(deps: AppDeps, session: StudentSession, loadQuestions: LoadQuestions) {
   return deps.db.transaction(async (tx) => {
+    // Khóa hàng lớp (FOR UPDATE) tới hết transaction: Thu bài (UPDATE cùng hàng) phải chờ. Hoặc Bắt đầu commit
+    // trước và lần quét của Thu bài thấy attempt mới, hoặc Thu bài commit trước và ở đây đọc lại được `closed`.
+    // Không thể có attempt in_progress tạo ra sau khi lớp đã đóng. Xóa đề cũng khóa cùng hàng này.
     const [examClass] = await tx
       .select({
         status: examClasses.status,
@@ -72,7 +75,8 @@ async function insertAttempt(deps: AppDeps, session: StudentSession, loadQuestio
       .innerJoin(exams, eq(exams.id, examClasses.examId))
       .where(
         and(eq(examClasses.id, session.examClassId), eq(examClasses.schoolId, session.schoolId)),
-      );
+      )
+      .for("update", { of: examClasses });
     if (!examClass) throw new AppError("NOT_FOUND");
 
     const counts = await loadStartCounts(tx, session.studentId, session.examClassId);
