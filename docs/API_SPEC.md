@@ -2,7 +2,7 @@
 
 > Overview + pointer tới source of truth. **Không chép schema tay vào đây**: chi tiết request/response lấy từ code.
 > Overview này khác code → **code thắng**, sửa lại overview.
-> Cập nhật lần cuối: close-out Layer 2 (2026-11-26).
+> Cập nhật lần cuối: close-out Layer 3 (2026-11-26).
 
 ## Source of truth
 
@@ -82,7 +82,7 @@ Cờ cookie: `HttpOnly; SameSite=Lax; Path=/`. `Secure`: cán bộ theo `NODE_EN
 
 Mã bài thi/mã học sinh chuẩn hóa bằng `normalizeExamCode` / `normalizeStudentCode` (trim, chữ hoa; mã bài thi nhận cả link dán vào) ở cả web và API.
 
-Quyền phiên (`requireStudentSession(ctx, deps, "active" | "read")`): **hiệu lực** = phiên còn sống của đúng học sinh + đúng lớp thi; **chỉ-xem** = phiên sau khi lần làm đã kết thúc (nộp/hết giờ) hoặc cấp khi học sinh đã nộp vào lại. Thiếu phiên đủ quyền → 401 `STUDENT_SESSION_REQUIRED` (vd mở đề/bấm Bắt đầu bằng phiên chỉ-xem).
+Quyền phiên (`requireStudentSession(ctx, deps, "active" | "read")`): **hiệu lực** = phiên còn sống của đúng học sinh + đúng lớp thi; **chỉ-xem** = phiên đã thu hồi mà (a) học sinh đã nộp bài trong lớp đó, hoặc (b) lớp đã `closed` và `revoked_at >= closed_at` (phiên bị thu hồi bởi chính lần Thu bài, hoặc phiên chỉ-xem cấp khi vào lớp đã thu bài). Thiếu phiên đủ quyền → 401 `STUDENT_SESSION_REQUIRED`; phiên chỉ-xem của lớp đã thu bài gọi route cần hiệu lực → 409 `EXAM_CLOSED`.
 
 | Method + path | Phiên cần | Request | 200/201 | Lỗi chính |
 |---|---|---|---|---|
@@ -99,7 +99,44 @@ Quy tắc bất biến:
 - `ends_at = now + số phút` theo **giờ máy chủ** (`deps.clock`); client tính đồng hồ từ `serverNow`.
 - Hết giờ kiểm **lười**: mọi request sau `ends_at + 3s` tự nộp bằng các câu đã lưu.
 - Vào thi khi học sinh đang có attempt `in_progress` (ở bất kỳ bài nào) mà **không** mang phiên hiệu lực của chính mình ở đúng lớp → 409 `ATTEMPT_IN_PROGRESS`, không cấp/thu hồi phiên (chưa hỗ trợ đổi máy, FR-043).
+- Vào thi ở lớp **đã thu bài** → 200 nhưng chỉ cấp phiên chỉ-xem (`state` trả `phase: closed`, `closedReason: class_closed`).
+- Bắt đầu khóa hàng `exam_classes` (`FOR UPDATE`) rồi mới xét trạng thái lớp, nên không thể tạo attempt sau khi lớp đã thu bài.
 - A đọc/sửa/nộp attempt của B → 404.
+
+### Giáo viên: ngân hàng câu hỏi (`modules/questions`, hợp đồng `@quiq/shared/questions`)
+
+Mọi route: `staffGuard(deps, ["teacher"])`; lọc `school_id` (từ phiên) + `teacher_id` (chủ sở hữu) ngay trong điều kiện ghi. Câu của giáo viên khác / trường khác / id không phải uuid → 404. Môn, chủ, trường **không** nhận từ client (môn = môn cố định của giáo viên, BR-017).
+
+| Method + path | Request | 200/201 | Lỗi |
+|---|---|---|---|
+| `GET /api/teacher/questions?difficulty=&page=` | `difficulty?` easy\|medium\|hard, `page?` 1..10000 | `{ subject, stats{total,easy,medium,hard} (không theo bộ lọc), items: Question[], total, page, pageSize: 25 }`, mới nhất trước | 422 `VALIDATION` |
+| `POST /api/teacher/questions` | `questionInputSchema` `{ content, difficulty, multiSelect, options[{content,isCorrect}] }` (2-4 đáp án, ≥ 1 đúng, `multiSelect=false` thì đúng 1) | 201 `Question` | 422 `VALIDATION` (`details[{path,message}]`, vd `options.1.content`) |
+| `GET /api/teacher/questions/:id` | | `Question` | 404 |
+| `PUT /api/teacher/questions/:id` | như POST | `Question` (thay toàn bộ đáp án trong một transaction) | 404, 422 |
+| `DELETE /api/teacher/questions/:id` | | `{ id }` (xóa dây chuyền đáp án; đề đã ra giữ bản sao, BR-002) | 404 |
+
+Giới hạn độ dài, số đáp án, kích thước trang: `packages/shared/src/questions/limits.ts`.
+
+### Giáo viên: bài thi và điều khiển lớp (`modules/exams`, `modules/class-control`, hợp đồng `@quiq/shared/exams`)
+
+Mọi route: `staffGuard(deps, ["teacher"])`; bài thi/lớp của giáo viên khác hoặc trường khác, id không phải uuid → 404.
+
+| Method + path | Request | 200/201 | Lỗi |
+|---|---|---|---|
+| `GET /api/teacher/exams/classes` | | `AssignableClass[]` (lớp trong `assignments` của giáo viên, năm học hiện tại) | |
+| `GET /api/teacher/exams/bank-counts` | | `{ easy, medium, hard }` (câu của chính giáo viên, đúng môn) | |
+| `GET /api/teacher/exams` | | `ExamListItem[]` (`code`, `link: /thi/<mã>`, `drawConfig`, `classes[{classId,className,status}]`, `attemptCount`) | |
+| `POST /api/teacher/exams` | `{ title, durationMinutes, drawConfig{total,easy,medium,hard}, classIds[] }` | 201 `ExamListItem` | 422 `VALIDATION`, 422 `INSUFFICIENT_QUESTIONS` (`details{difficulty,have,need}`, không tạo hàng nào), 422 `INVALID_DRAW_CONFIG`, 403 `CLASS_NOT_ASSIGNED` |
+| `GET /api/teacher/exams/:id` | | `ExamDetailView` (bản sao câu hỏi **kèm đáp án đúng**, chỉ cho giáo viên chủ đề) | 404 |
+| `DELETE /api/teacher/exams/:id` | | `{ id }` | 409 `EXAM_HAS_ATTEMPTS`, 404 |
+| `POST /api/teacher/exams/:examId/classes/:classId/dispatch` | | `ExamClassState` (snapshot `max_attempts/warn_limit/interrupt_secs` từ trường) | 409 `CLASS_ALREADY_DISPATCHED`, `CLASS_ALREADY_CLOSED`, 404 |
+| `POST .../classes/:classId/close` | | `CloseClassResult { examClass, finalizedAttempts }`; **idempotent** (lớp đã thu bài: chạy lại thu hồi phiên + chấm, 200) | 409 `CLASS_NOT_DISPATCHED` (lớp nháp), 404 |
+| `GET .../classes/:classId/roster` | | `RosterView { examClass, students[{code, fullName, status: not_started\|waiting\|in_progress\|submitted, attemptsUsed, bestScore}], counts, serverNow }` (polling 3 giây) | 404 |
+
+Quy tắc:
+- Tạo đề: `drawQuestions` (engine) + sao chép câu/đáp án vào `exam_questions`/`exam_options` + tạo `exam_classes` (`draft`) trong **một transaction**. Mã bài thi 6 ký tự, bỏ `0 O 1 I L`, duy nhất toàn hệ thống (kiểm trước + retry khi trùng `exams_code_key`).
+- Thu bài: (1) đóng lớp, (2) thu hồi mọi phiên học sinh của lớp với `revoked_at = closed_at`, (3) `finalizeAttempt(…, "closed")` mọi attempt `in_progress`.
+- "Đang chờ" = có presence trong 15 giây (`WAITING_PRESENCE_FRESH_SECONDS`, `@quiq/shared/student`), bỏ qua khi lớp đã thu bài.
 
 ## Mã lỗi
 
@@ -108,6 +145,8 @@ Quy tắc bất biến:
 | `packages/shared/src/common/errors.ts` | `BAD_REQUEST` 400, `UNAUTHENTICATED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, `CONFLICT` 409, `PAYLOAD_TOO_LARGE` 413, `VALIDATION` 422, `RATE_LIMITED` 429, `INTERNAL` 500 |
 | `packages/shared/src/auth/errors.ts` | `INVALID_CREDENTIALS` 401, `SCHOOL_LOCKED` 403, `LOGIN_THROTTLED` 429 |
 | `packages/shared/src/student/errors.ts` | `EXAM_NOT_FOUND` 404, `STUDENT_NOT_ALLOWED` 404, `SCHOOL_LOCKED` 403, `STUDENT_SESSION_REQUIRED` 401, `ENTER_CONFLICT`, `EXAM_NOT_DISPATCHED`, `EXAM_CLOSED`, `ATTEMPT_ALREADY_COMPLETED`, `ATTEMPT_IN_PROGRESS`, `ATTEMPT_LIMIT_REACHED`, `ATTEMPT_ENDED`, `ATTEMPT_NOT_FINISHED` (409), `INVALID_ANSWER` 422 |
+| `packages/shared/src/questions/errors.ts` | (chỉ thông điệp validate tiếng Việt; dùng mã chung `VALIDATION`, `NOT_FOUND`) |
+| `packages/shared/src/exams/errors.ts` | `INSUFFICIENT_QUESTIONS` 422, `INVALID_DRAW_CONFIG` 422, `CLASS_NOT_ASSIGNED` 403, `EXAM_HAS_ATTEMPTS`, `CLASS_ALREADY_DISPATCHED`, `CLASS_ALREADY_CLOSED`, `CLASS_NOT_DISPATCHED` (409) |
 | `modules/health/routes.ts` | `DB_UNAVAILABLE` 503 |
 
 Thông điệp tiếng Việt nằm trong các file trên; web hiển thị `error` từ envelope.

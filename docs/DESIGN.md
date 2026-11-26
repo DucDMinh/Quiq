@@ -12,7 +12,7 @@
 | Hợp đồng API as-built | `docs/API_SPEC.md` |
 | Gap code ↔ intent | `docs/changes/TECHNICAL_REQUIREMENT_GAPS.md` |
 
-## Current state (as-built, sau Layer 2, 2026-11-26)
+## Current state (as-built, sau Layer 3, 2026-11-26)
 
 ### API (Koa, `apps/api`)
 - `createApp({ deps })` (`src/app.ts`): middleware `errorMiddleware → bodyParser → router`; module loader nạp `src/modules/*/routes.ts`, mỗi module nhận `(router, deps)`.
@@ -32,6 +32,15 @@
 - Hết giờ kiểm **lười** theo `ends_at + 3s` khi có request (`expireDueAttempts`); sweeper nền là tính năng sau (Layer 6).
 - `is_correct` chỉ dùng để chấm; đề và kết quả trả về không bao giờ chứa đáp án đúng.
 - Polling `GET /api/student/state` 3 giây thay cho SSE (Layer 4).
+- Phiên chỉ-xem còn cấp cho lớp **đã thu bài**: phiên bị thu hồi bởi lần Thu bài (`revoked_at >= closed_at`) và lần vào lại sau đó chỉ xem được (`phase: closed`), không bao giờ lên quyền làm bài.
+
+### Giáo viên ra đề và điều khiển lớp (sau Layer 3)
+- Ngân hàng câu hỏi (`modules/questions`, `/giao-vien/ngan-hang`): câu thuộc riêng giáo viên (lọc trường + chủ trong điều kiện ghi), môn cố định của giáo viên, chưa có ảnh (Layer 15).
+- Tạo đề (`modules/exams/create.ts`): rút câu bằng engine và **sao chép** sang `exam_questions/exam_options` trong một transaction, nên sửa/xóa ngân hàng không ảnh hưởng đề đã ra (BR-002).
+- Vòng đời lớp (`modules/class-control`): `draft` → Phát đề (`dispatched`, chụp snapshot quy chế trường) → Thu bài (`closed`). Thu bài idempotent: đóng lớp → thu hồi mọi phiên học sinh của lớp (`revoked_at = closed_at`) → `finalizeAttempt(…, "closed")` mọi attempt đang làm; gọi lại để dọn nếu lần trước lỗi giữa chừng (web: "Thu bài lại lớp X").
+- **Khóa đồng thời dùng chung:** Bắt đầu (`attempts/start.ts`) và xóa đề (`exams/delete.ts`) khóa hàng `exam_classes FOR UPDATE`; bước đóng lớp là UPDATE có điều kiện trên cùng hàng, nên Bắt đầu và Thu bài không chen nhau.
+- Roster giáo viên polling 3 giây, "Đang chờ" = presence ≤ 15 giây (`WAITING_PRESENCE_FRESH_SECONDS`).
+- Web giáo viên: `/giao-vien/ngan-hang`, `/giao-vien/bai-thi`, `/giao-vien/phong-thi` (`src/features/questions`, `features/exams`, `features/class-control`).
 
 ### Web (Next.js, `apps/web`)
 - Gọi API same-origin `/api/*` qua rewrite (`next.config.ts`), `src/lib/api-client.ts` phát sự kiện `quiq:unauthenticated` khi 401.
