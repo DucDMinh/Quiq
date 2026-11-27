@@ -16,6 +16,12 @@ export const EXAM_ERRORS = {
   CLASS_ALREADY_DISPATCHED: { status: 409, message: "Lớp này đã được phát đề." },
   CLASS_NOT_DISPATCHED: { status: 409, message: "Lớp chưa được phát đề nên chưa thể thu bài." },
   CLASS_ALREADY_CLOSED: { status: 409, message: "Lớp này đã thu bài." },
+  CLASS_NOT_CLOSED: { status: 409, message: "Lớp chưa thu bài xong nên chưa thể công bố." },
+  // Câu hỏi thuộc bài thi, không thuộc lớp: công bố đáp án sớm là lộ cho lớp khác còn đang thi.
+  OTHER_CLASSES_NOT_CLOSED: {
+    status: 409,
+    message: "Mọi lớp của bài phải thu bài trước khi công bố đáp án.",
+  },
 } as const satisfies Record<string, ErrorDefinition>;
 
 export type ExamErrorCode = keyof typeof EXAM_ERRORS;

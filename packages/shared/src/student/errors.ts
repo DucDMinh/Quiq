@@ -28,6 +28,8 @@ export const STUDENT_ERRORS = {
   ATTEMPT_LIMIT_REACHED: { status: 409, message: "Bạn đã dùng hết lượt làm bài." },
   ATTEMPT_ENDED: { status: 409, message: "Lần làm bài này đã kết thúc." },
   ATTEMPT_NOT_FINISHED: { status: 409, message: "Bài làm chưa nộp nên chưa có kết quả." },
+  // Không kèm bất cứ nội dung đề nào (FR-047).
+  ANSWERS_NOT_PUBLISHED: { status: 409, message: "Giáo viên chưa công bố đáp án." },
   INVALID_ANSWER: { status: 422, message: "Đáp án không thuộc câu hỏi này." },
 } as const satisfies Record<string, ErrorDefinition>;
 

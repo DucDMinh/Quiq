@@ -5,7 +5,7 @@ import { ok } from "../../http/response";
 import type { RegisterRoutes } from "../loader";
 import { teacherScope } from "../exams/service";
 import { getRoster } from "./roster";
-import { closeClass, dispatchClass, type ExamClassRef } from "./service";
+import { closeClass, dispatchClass, publishClass, type ExamClassRef } from "./service";
 import { openRosterStream } from "./stream";
 
 function examClassRefOf(params: unknown): ExamClassRef {
@@ -25,6 +25,14 @@ const registerClassControlRoutes: RegisterRoutes = (router, deps) => {
 
   router.post(`${BASE}/close`, ...guard, async (ctx) => {
     ok(ctx, await closeClass(deps, teacherScope(ctx), examClassRefOf(ctx.params)));
+  });
+
+  router.post(`${BASE}/publish-answers`, ...guard, async (ctx) => {
+    ok(ctx, await publishClass(deps, teacherScope(ctx), examClassRefOf(ctx.params), "answers"));
+  });
+
+  router.post(`${BASE}/publish-scores`, ...guard, async (ctx) => {
+    ok(ctx, await publishClass(deps, teacherScope(ctx), examClassRefOf(ctx.params), "scores"));
   });
 
   router.get(`${BASE}/roster`, ...guard, async (ctx) => {

@@ -1,6 +1,7 @@
 import { exams, schools, sessions } from "@quiq/db";
 import { ROSTER_STREAM_EVENT, type RosterView } from "@quiq/shared/exams";
 import { eq } from "drizzle-orm";
+import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createRealtimeHub } from "../../realtime/hub";
 import { connectSse, listenTestServer, waitUntil, type SseClient, type SseEvent, type TestServer } from "../../testing/sse-client";
@@ -218,5 +219,25 @@ describe("Luồng SSE phòng thi: nhịp định kỳ và dọn dẹp", () => {
       setSpy.mockRestore();
       clearSpy.mockRestore();
     }
+  });
+});
+
+describe("Luồng SSE phòng thi: công bố", () => {
+  const h = useHarness({ refreshMs: 600_000 });
+
+  it("công bố đáp án: roster mới mang mốc công bố trong 1 giây và không có cờ đáp án đúng nào", async () => {
+    const s = await setupExamClass(h.testApp);
+    const post = (classId: string, action: string) =>
+      request(h.testApp.app.callback()).post(s.classUrl(classId, action)).set("Cookie", s.fixture.cookie);
+    for (const classId of [s.fixture.classId, s.fixture.otherClassId]) {
+      expect((await post(classId, "dispatch")).status).toBe(200);
+      expect((await post(classId, "close")).status).toBe(200);
+    }
+    const stream = await openStream(h, s);
+    await stream.waitFor(roster((v) => v.examClass.status === "closed"), WITHIN_MS);
+
+    expect((await post(s.fixture.classId, "publish-answers")).status).toBe(200);
+    const event = await stream.waitFor(roster((v) => v.examClass.answersPublishedAt !== null), WITHIN_MS);
+    expect(event.data).not.toMatch(/correct/i);
   });
 });
