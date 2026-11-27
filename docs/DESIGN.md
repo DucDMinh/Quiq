@@ -12,7 +12,7 @@
 | Hợp đồng API as-built | `docs/API_SPEC.md` |
 | Gap code ↔ intent | `docs/changes/TECHNICAL_REQUIREMENT_GAPS.md` |
 
-## Current state (as-built, sau Layer 4, 2026-11-26)
+## Current state (as-built, sau Layer 5, 2026-11-27)
 
 ### API (Koa, `apps/api`)
 - `createApp({ deps })` (`src/app.ts`): middleware `errorMiddleware → bodyParser → router`; module loader nạp `src/modules/*/routes.ts`, mỗi module nhận `(router, deps)`.
@@ -46,7 +46,7 @@
 - Gọi API same-origin `/api/*` qua rewrite (`next.config.ts`), `src/lib/api-client.ts` phát sự kiện `quiq:unauthenticated` khi 401.
 - Cán bộ: `/dang-nhap`, khung `AppShell` (`src/features/shell/app-shell.tsx`); **`src/features/shell/nav-config.ts` là chỗ duy nhất** để layer sau thêm mục menu; dialog "Phiên đăng nhập đã hết hạn".
 - Học sinh: `/thi`, `/thi/[code]`, `/phong-cho`, `/lam-bai`, `/ket-qua` (`src/features/student/`).
-- Chỉ desktop (`MinWidthGuard` ở root layout).
+- Chỉ desktop (`MinWidthGuard` ở root layout), trừ `/tra-cuu` (`MIN_WIDTH_EXEMPT_PATHS`).
 
 ### Theo dõi trực tiếp (Layer 4)
 - **SSE hub trong tiến trình** (`apps/api/src/realtime/hub.ts`, gắn qua `deps.realtime?`): `publish(examClassId)` chỉ báo "lớp đổi", không mang dữ liệu. Điểm phát tín hiệu, **luôn sau commit**: presence phòng chờ mới/quay lại (`touchPresence`), Bắt đầu, `finalizeAttempt` (nộp, hết giờ, thu bài), phát đề, thu bài.
@@ -55,3 +55,8 @@
 - Phiên hỏng khi đang theo dõi: server đóng luồng → client polling → `GET roster` 401 → dialog hết phiên; 403 `SCHOOL_LOCKED` → Alert lỗi, bảng giữ ảnh chụp cuối.
 - Giới hạn: hub một tiến trình (G-15), chưa giới hạn số kết nối SSE (G-16); học sinh vẫn polling `state` 3 giây (SSE chỉ cho giáo viên).
 - `GET roster` không còn chỉ đọc: kiểm hết giờ lười cho bài quá `ends_at + 3s` (G-12).
+
+### Công bố và tra cứu điểm (Layer 5)
+- Hai thao tác riêng theo lớp (BR-010), **chỉ sau thu bài**, một chiều, idempotent: `publish-answers` / `publish-scores` (`modules/class-control/service.ts`). Công bố đáp án còn cần **mọi lớp của bài** đã thu bài và không còn attempt đang làm: một transaction khóa mọi hàng `exam_classes` của bài theo `ORDER BY id` rồi mới ghi, nên không chen với phát đề/thu bài/Bắt đầu của lớp khác.
+- Học sinh xem đáp án chỉ từ trang kết quả (`GET /student/attempts/:id/answers`, `modules/attempts/answers.ts`): kiểm attempt đã hoàn thành, lớp đã công bố và mọi lớp của bài đã xong **trước** khi đọc `is_correct` (bộ đọc riêng, `loadPaperQuestions` không đổi); không trả lựa chọn của học sinh. Web gọi API mỗi lần bấm "Xem đáp án".
+- Tra cứu công khai `/tra-cuu` (`modules/lookup`, `features/lookup`): không đăng nhập, chỉ bài đã công bố bảng điểm, điểm cao nhất, không làm bài = 0 (tính lúc trả), không PII, mã sai/vô hiệu trả như "chưa có bài"; rate-limit theo IP thực chất toàn cục (G-01, chặn deploy production).

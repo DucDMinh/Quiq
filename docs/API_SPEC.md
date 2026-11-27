@@ -93,6 +93,7 @@ Quyền phiên (`requireStudentSession(ctx, deps, "active" | "read")`): **hiệu
 | `PUT /api/student/attempts/:id/answers` | hiệu lực | `saveAnswerBodySchema` `{ questionId, optionIds }` | `SaveAnswerResult` `{ questionId, optionIds, serverNow }` | 409 `ATTEMPT_ENDED` (quá `ends_at + 3s`, tự nộp), 422 `INVALID_ANSWER` |
 | `POST /api/student/attempts/:id/submit` | chỉ-xem trở lên | | `AttemptResultView` (idempotent: nộp lại không đổi điểm) | 404 |
 | `GET /api/student/attempts/:id/result` | chỉ-xem trở lên | | `AttemptResultView` | 409 `ATTEMPT_NOT_FINISHED` |
+| `GET /api/student/attempts/:id/answers` (Layer 5, `modules/attempts/answers.ts`) | chỉ-xem trở lên | | `AttemptAnswersView { attemptId, examTitle, questions[{ id, content, multiSelect, options[{ id, content, isCorrect }] }] }` theo đúng thứ tự câu/đáp án của attempt; **không có trường lựa chọn của học sinh** (FR-047) | 404 (attempt không phải của mình / trường khác), 409 `ATTEMPT_NOT_FINISHED`, 409 `ANSWERS_NOT_PUBLISHED` (lớp chưa công bố đáp án, **hoặc** còn lớp nào của bài chưa thu bài; không trả nội dung) |
 
 Quy tắc bất biến:
 - **Đề (`ExamPaperView`) không bao giờ chứa `is_correct`** hay đáp án đúng; `AttemptResultView` (`score` thang 10 hai chữ số, `correct`, `total`, `endReason`, …) không chứa câu đã chọn hay đáp án đúng. `is_correct` chỉ dùng để chấm phía server.
@@ -133,6 +134,8 @@ Mọi route: `staffGuard(deps, ["teacher"])`; bài thi/lớp của giáo viên k
 | `POST .../classes/:classId/close` | | `CloseClassResult { examClass, finalizedAttempts }`; **idempotent** (lớp đã thu bài: chạy lại thu hồi phiên + chấm, 200) | 409 `CLASS_NOT_DISPATCHED` (lớp nháp), 404 |
 | `GET .../classes/:classId/roster` | | `RosterView { examClass, students[{code, fullName, status: not_started\|waiting\|in_progress\|submitted, attemptsUsed, bestScore, interrupted}], counts, serverNow }`. **Có ghi:** trước khi tính, tự nộp attempt `in_progress` đã quá `ends_at + 3s` với `endReason=timeout` (G-12) | 404 |
 | `GET .../classes/:classId/stream` | `Accept: text/event-stream` | 200 SSE (xem dưới) | 401, 404 trả **JSON** (kiểm quyền + ảnh chụp đầu chạy trước khi mở luồng) |
+| `POST .../classes/:classId/publish-answers` (Layer 5) | | `ExamClassState`; **một chiều, idempotent** (bấm lại giữ mốc `answersPublishedAt` đầu); phát realtime chỉ khi có ghi | 409 `CLASS_NOT_CLOSED` (lớp chưa thu bài, hoặc đã thu nhưng còn attempt `in_progress`), 409 `OTHER_CLASSES_NOT_CLOSED` (còn lớp khác của cùng bài chưa thu bài, kể cả `draft`), 404 |
+| `POST .../classes/:classId/publish-scores` (Layer 5) | | `ExamClassState`; một chiều, idempotent; chỉ cần lớp mình đã thu bài | 409 `CLASS_NOT_CLOSED`, 404 |
 
 **Stream SSE (`modules/class-control/stream.ts`, Layer 4):**
 - Header: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`, `Connection: keep-alive`, `X-Accel-Buffering: no` (đo qua rewrite Next dev: ≤ 6 ms, không nén).
@@ -146,6 +149,24 @@ Quy tắc:
 - Tạo đề: `drawQuestions` (engine) + sao chép câu/đáp án vào `exam_questions`/`exam_options` + tạo `exam_classes` (`draft`) trong **một transaction**. Mã bài thi 6 ký tự, bỏ `0 O 1 I L`, duy nhất toàn hệ thống (kiểm trước + retry khi trùng `exams_code_key`).
 - Thu bài: (1) đóng lớp, (2) thu hồi mọi phiên học sinh của lớp với `revoked_at = closed_at`, (3) `finalizeAttempt` mọi attempt `in_progress`: đã quá `ends_at + 3s` → `endReason=timeout`, còn giờ → `closed` (G-12).
 - "Đang chờ" = có presence trong 15 giây (`WAITING_PRESENCE_FRESH_SECONDS`, `@quiq/shared/student`), bỏ qua khi lớp đã thu bài.
+- `ExamClassState` (dispatch/close/roster/stream/publish) có `answersPublishedAt`, `scoresPublishedAt` (ISO hoặc null) và `otherClassesOpen` (còn lớp khác của bài chưa xong; web dùng để khóa nút công bố đáp án, server vẫn là chốt chặn).
+- Công bố (Layer 5, BR-010, user chốt 2026-11-27): hai thao tác riêng theo lớp, **chỉ sau thu bài**, không hủy. Công bố đáp án chạy một transaction khóa mọi `exam_classes` của bài (`FOR UPDATE ORDER BY id`), kiểm mọi lớp đã `closed` và không còn attempt `in_progress`, rồi `UPDATE ... WHERE status='closed' AND answers_published_at IS NULL`. Đáp án đúng chỉ rời server qua `/answers` (học sinh) và `GET /teacher/exams/:id` (giáo viên chủ đề).
+
+### Tra cứu điểm công khai (`modules/lookup`, hợp đồng `@quiq/shared/lookup`, Layer 5)
+
+Không cần đăng nhập. Trường bị khóa vẫn tra cứu được (C-09).
+
+| Method + path | Body | 200 data | Lỗi |
+|---|---|---|---|
+| `GET /api/lookup/schools` | | `LookupSchool[]` `{ id, name }` (gồm cả trường bị khóa) | |
+| `GET /api/lookup/schools/:schoolId/years` | | `LookupYear[]` `{ id, name, isCurrent }`, mới nhất trước | 422 `VALIDATION` (id không phải uuid) |
+| `POST /api/lookup` | `lookupBodySchema` `{ schoolId, studentCode, academicYearId? }` (thiếu năm → năm `isCurrent`) | `LookupResult { items[{ subjectName, examTitle, examCode, score }] }` | 422 `VALIDATION`, 429 `RATE_LIMITED` (header `Retry-After`, `details.retryAfterSeconds`) |
+
+Quy tắc (FR-064, BR-013):
+- Chỉ bài của lớp có `scores_published_at`, lớp mà học sinh được ghi danh, năm học lấy qua `exam_class → class → academic_year` (không lọc năm qua `enrollments`, G-13).
+- Điểm chính thức = `officialScore` (cao nhất) trên các attempt `submitted` đã có điểm; **không có → 0**, chỉ tính lúc trả, không ghi DB (user chốt 2026-11-27).
+- Không PII, không id nội bộ. Mã không tồn tại, mã `code_voided`, trường không tồn tại, chưa có bài công bố → **cùng body** `{ items: [] }`.
+- Rate-limit 30 lượt / 60 giây theo `ctx.ip`, cửa sổ cố định, đếm mọi lượt kể cả input sai (`modules/lookup/rate-limit.ts`). **Hiện thực chất toàn cục** vì sau rewrite Next mọi request cùng IP (G-01).
 
 ## Mã lỗi
 
@@ -153,9 +174,10 @@ Quy tắc:
 |---|---|
 | `packages/shared/src/common/errors.ts` | `BAD_REQUEST` 400, `UNAUTHENTICATED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, `CONFLICT` 409, `PAYLOAD_TOO_LARGE` 413, `VALIDATION` 422, `RATE_LIMITED` 429, `INTERNAL` 500 |
 | `packages/shared/src/auth/errors.ts` | `INVALID_CREDENTIALS` 401, `SCHOOL_LOCKED` 403, `LOGIN_THROTTLED` 429 |
-| `packages/shared/src/student/errors.ts` | `EXAM_NOT_FOUND` 404, `STUDENT_NOT_ALLOWED` 404, `SCHOOL_LOCKED` 403, `STUDENT_SESSION_REQUIRED` 401, `ENTER_CONFLICT`, `EXAM_NOT_DISPATCHED`, `EXAM_CLOSED`, `ATTEMPT_ALREADY_COMPLETED`, `ATTEMPT_IN_PROGRESS`, `ATTEMPT_LIMIT_REACHED`, `ATTEMPT_ENDED`, `ATTEMPT_NOT_FINISHED` (409), `INVALID_ANSWER` 422 |
+| `packages/shared/src/student/errors.ts` | `EXAM_NOT_FOUND` 404, `STUDENT_NOT_ALLOWED` 404, `SCHOOL_LOCKED` 403, `STUDENT_SESSION_REQUIRED` 401, `ENTER_CONFLICT`, `EXAM_NOT_DISPATCHED`, `EXAM_CLOSED`, `ATTEMPT_ALREADY_COMPLETED`, `ATTEMPT_IN_PROGRESS`, `ATTEMPT_LIMIT_REACHED`, `ATTEMPT_ENDED`, `ATTEMPT_NOT_FINISHED`, `ANSWERS_NOT_PUBLISHED` (409), `INVALID_ANSWER` 422 |
 | `packages/shared/src/questions/errors.ts` | (chỉ thông điệp validate tiếng Việt; dùng mã chung `VALIDATION`, `NOT_FOUND`) |
-| `packages/shared/src/exams/errors.ts` | `INSUFFICIENT_QUESTIONS` 422, `INVALID_DRAW_CONFIG` 422, `CLASS_NOT_ASSIGNED` 403, `EXAM_HAS_ATTEMPTS`, `CLASS_ALREADY_DISPATCHED`, `CLASS_ALREADY_CLOSED`, `CLASS_NOT_DISPATCHED` (409) |
+| `packages/shared/src/exams/errors.ts` | `INSUFFICIENT_QUESTIONS` 422, `INVALID_DRAW_CONFIG` 422, `CLASS_NOT_ASSIGNED` 403, `EXAM_HAS_ATTEMPTS`, `CLASS_ALREADY_DISPATCHED`, `CLASS_ALREADY_CLOSED`, `CLASS_NOT_DISPATCHED`, `CLASS_NOT_CLOSED`, `OTHER_CLASSES_NOT_CLOSED` (409) |
+| `packages/shared/src/lookup` | (dùng mã chung `VALIDATION` 422, `RATE_LIMITED` 429) |
 | `modules/health/routes.ts` | `DB_UNAVAILABLE` 503 |
 
 Thông điệp tiếng Việt nằm trong các file trên; web hiển thị `error` từ envelope.
@@ -163,4 +185,5 @@ Thông điệp tiếng Việt nằm trong các file trên; web hiển thị `err
 ## Rate limiting (hiện trạng)
 
 - Đăng nhập cán bộ: như trên.
+- `POST /api/lookup`: 30 lượt / 60 giây theo `ctx.ip` (thực chất toàn cục, G-01).
 - `/api/student/enter` và các route khác: **chưa có** (gap G-03).
