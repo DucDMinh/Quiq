@@ -26,6 +26,9 @@ export default function HomePage() {
     <main>
       <h1>Quiq</h1>
       <p data-testid="api-health">{HEALTH_LABEL[health]}</p>
+      <p>
+        <a href="/tra-cuu">Tra cứu điểm</a>
+      </p>
     </main>
   );
 }
