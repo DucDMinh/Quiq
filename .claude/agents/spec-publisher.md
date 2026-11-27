@@ -2,7 +2,7 @@
 name: spec-publisher
 description: "Spec Publisher — tự động bump version spec + ghi delta + sinh spec/test-scope/current.json bàn giao cho template test. Chạy cuối mỗi bug-fix/feature-update."
 disallowedTools: Agent
-model: inherit
+model: haiku
 maxTurns: 20
 color: yellow
 ---

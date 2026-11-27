@@ -3,7 +3,7 @@ name: spec-validator
 description: "Spec Validator độc lập — cross-check spec/phase với requirements, phát hiện gap và conflict. KHÔNG tự sửa code."
 # Giống reviewer: chỉ đọc + ghi report (.context/review-reports/**), Bash bị allowlist bởi agent-guard.mjs.
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
+model: haiku
 maxTurns: 20
 color: orange
 ---

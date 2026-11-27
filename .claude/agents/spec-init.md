@@ -2,7 +2,7 @@
 name: spec-init
 description: "Spec Init — dựng spec (reverse-engineer) cho project CŨ đã có code nhưng chưa có spec, rồi bàn giao spec + test-scope cho template test."
 disallowedTools: Agent
-model: inherit
+model: haiku
 maxTurns: 40
 color: green
 ---

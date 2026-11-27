@@ -6,7 +6,7 @@ description: "Reviewer độc lập — tìm defect trong code/test của 1 task
 tools: Read, Grep, Glob, Bash, Write
 # Nên KHÁC model của builder để giảm thiên lệch tự đánh giá (Claude Code chỉ có model Claude,
 # nên "khác" = khác tier: builder opus ↔ reviewer sonnet, hoặc ngược lại). Đổi ở /brainstorm (models.reviewer).
-model: opus
+model: sonnet
 maxTurns: 30
 color: red
 ---

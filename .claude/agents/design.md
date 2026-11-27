@@ -2,7 +2,7 @@
 name: design
 description: "Design — sinh design spec (screen specs) + design tokens cho project có UI, trước khi chia layer/code. Chạy tự động sau brainstorm trong /start; dùng tay qua /design."
 disallowedTools: Agent
-model: inherit
+model: haiku
 maxTurns: 30
 color: pink
 ---

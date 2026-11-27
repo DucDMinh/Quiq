@@ -3,7 +3,7 @@ name: builder-strong
 description: "Builder cho task khó — CHỈ dùng khi user yêu cầu rõ (luôn hỏi duyệt qua hook agent-guard). Không tự chọn theo độ khó."
 disallowedTools: Agent
 # Model mạnh hơn builder. Gọi agent này luôn phải qua prompt duyệt: .claude/settings.json → hook agent-guard.mjs (permissionDecision "ask").
-model: opus
+model: sonnet
 maxTurns: 50
 color: purple
 ---

@@ -4,8 +4,8 @@ description: "Builder mặc định — implement code + test cho 1 task (featur
 # Mọi tool trừ Agent: builder là "lá", không spawn subagent khác.
 disallowedTools: Agent
 # inherit = dùng model của session chính. Đổi ở /brainstorm (models.builder): sonnet | opus | haiku | fable | <model-id>
-model: sonnet
-maxTurns: 40
+model: haiku
+maxTurns: 60
 color: blue
 ---
 

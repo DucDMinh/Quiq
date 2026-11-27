@@ -2,7 +2,7 @@
 name: graph
 description: "Graph — chia spec/design thành các layer + task theo dependency order, sinh tasks/<slug>/layer-N-task-NN.md + layer-plan diagram. Chạy tự động sau brainstorm (project start) hoặc tay qua /graph."
 disallowedTools: Agent
-model: inherit
+model: haiku
 maxTurns: 20
 color: cyan
 ---
