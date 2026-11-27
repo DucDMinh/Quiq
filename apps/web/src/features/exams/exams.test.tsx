@@ -163,6 +163,9 @@ function rosterOf(status: "draft" | "dispatched", inProgress: number): RosterVie
       maxAttempts: null,
       warnLimit: null,
       interruptSecs: null,
+      answersPublishedAt: null,
+      scoresPublishedAt: null,
+      otherClassesOpen: false,
     },
     students: [
       {

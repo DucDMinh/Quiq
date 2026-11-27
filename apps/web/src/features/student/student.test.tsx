@@ -1,4 +1,9 @@
-import type { AttemptResultView, ExamPaperView, StudentStateView } from "@quiq/shared/student";
+import type {
+  AttemptAnswersView,
+  AttemptResultView,
+  ExamPaperView,
+  StudentStateView,
+} from "@quiq/shared/student";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -260,31 +265,88 @@ describe("ExamView", () => {
   });
 });
 
+const RESULT: AttemptResultView = {
+  attemptId: "a1",
+  attemptNo: 1,
+  maxAttempts: 3,
+  score: 3.75,
+  correct: 3,
+  total: 8,
+  endReason: "timeout",
+  examTitle: "Kiểm tra Toán mẫu",
+  examCode: "DEMO01",
+  student: { code: "HS001", fullName: "Nguyễn Văn An" },
+};
+
+const ANSWER_KEY: AttemptAnswersView = {
+  attemptId: "a1",
+  examTitle: "Kiểm tra Toán mẫu",
+  questions: [
+    {
+      id: "q2",
+      content: "Câu hỏi hai",
+      multiSelect: true,
+      options: [1, 2, 3, 4].map((n) => ({ ...option(2, n), isCorrect: n <= 2 })),
+    },
+    {
+      id: "q1",
+      content: "Câu hỏi một",
+      multiSelect: false,
+      options: [1, 2, 3, 4].map((n) => ({ ...option(1, n), isCorrect: n === 3 })),
+    },
+  ],
+};
+
+function serveResult() {
+  serve("GET /api/student/state", () =>
+    ok(stateOf({ phase: "completed", attempt: { id: "a1", attemptNo: 1, endsAt: null } })),
+  );
+  serve("GET /api/student/attempts/a1/result", () => ok(RESULT));
+}
+
 describe("ResultView", () => {
-  it("hiện điểm 2 chữ số, lý do kết thúc; Xem đáp án báo chưa công bố, không lộ đáp án", async () => {
-    const result: AttemptResultView = {
-      attemptId: "a1",
-      attemptNo: 1,
-      maxAttempts: 3,
-      score: 3.75,
-      correct: 3,
-      total: 8,
-      endReason: "timeout",
-      examTitle: "Kiểm tra Toán mẫu",
-      examCode: "DEMO01",
-      student: { code: "HS001", fullName: "Nguyễn Văn An" },
-    };
-    serve("GET /api/student/state", () =>
-      ok(stateOf({ phase: "completed", attempt: { id: "a1", attemptNo: 1, endsAt: null } })),
+  it("hiện điểm 2 chữ số, lý do kết thúc; Xem đáp án khi chưa công bố báo lỗi tại chỗ, không lộ đề", async () => {
+    serveResult();
+    serve("GET /api/student/attempts/a1/answers", () =>
+      fail(409, "ANSWERS_NOT_PUBLISHED", "Giáo viên chưa công bố đáp án."),
     );
-    serve("GET /api/student/attempts/a1/result", () => ok(result));
     render(<ResultView examCode="DEMO01" />);
 
     expect(await screen.findByTestId("score")).toHaveTextContent("3,75");
     expect(screen.getByText("Đúng 3/8 câu (thang 10)")).toBeInTheDocument();
     expect(screen.getByText(/Lý do kết thúc: Hết giờ/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Xem đáp án" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Giáo viên chưa công bố đáp án");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Giáo viên chưa công bố đáp án");
     expect(document.body.textContent).not.toMatch(/Đáp án \d câu/);
+  });
+
+  it("giáo viên vừa công bố: bấm lại gọi API lần nữa, hiện đề và đáp án đúng, không hiện câu đã chọn", async () => {
+    serveResult();
+    let published = false;
+    serve("GET /api/student/attempts/a1/answers", () =>
+      published ? ok(ANSWER_KEY) : fail(409, "ANSWERS_NOT_PUBLISHED", "Giáo viên chưa công bố đáp án."),
+    );
+    render(<ResultView examCode="DEMO01" />);
+    const button = await screen.findByRole("button", { name: "Xem đáp án" });
+    await userEvent.click(button);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Giáo viên chưa công bố đáp án");
+
+    published = true;
+    await userEvent.click(screen.getByRole("button", { name: "Xem đáp án" }));
+    const section = await screen.findByRole("region", { name: "Đề thi và đáp án đúng" });
+    expect(calls.filter((c) => c.key === "GET /api/student/attempts/a1/answers")).toHaveLength(2);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    const cards = within(section).getAllByRole("listitem").filter((item) => item.parentElement?.tagName === "OL");
+    expect(cards.map((card) => within(card).getByText(/^Câu hỏi/).textContent)).toEqual(["Câu hỏi hai", "Câu hỏi một"]);
+    expect(within(cards[0]!).getAllByText("Đúng")).toHaveLength(2);
+    expect(within(cards[1]!).getAllByText("Đúng")).toHaveLength(1);
+    const correct = within(cards[1]!).getByText("Đáp án 3 câu 1").closest("li");
+    expect(correct).toHaveAttribute("data-correct", "true");
+    expect(within(correct!).getByText("Đúng")).toBeInTheDocument();
+    // FR-047: không có dấu "đã chọn" nào.
+    expect(screen.queryByTestId("answer-tick")).not.toBeInTheDocument();
+    expect(screen.queryByText("Đã chọn")).not.toBeInTheDocument();
+    expect(section.querySelector("[aria-pressed]")).toBeNull();
   });
 });

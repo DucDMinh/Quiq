@@ -150,7 +150,15 @@ export interface ExamClassState {
   maxAttempts: number | null;
   warnLimit: number | null;
   interruptSecs: number | null;
+  /** Mốc công bố đáp án / bảng điểm (FR-037, FR-038); null khi chưa công bố. Một chiều, không hủy được. */
+  answersPublishedAt: string | null;
+  scoresPublishedAt: string | null;
+  /** Còn lớp khác của cùng bài thi chưa thu bài xong: chưa công bố đáp án được (bảng điểm thì được). */
+  otherClassesOpen: boolean;
 }
+
+/** Hai thao tác công bố riêng của một lớp (BR-010). */
+export type PublishKind = "answers" | "scores";
 
 export interface RosterStudent {
   studentId: string;

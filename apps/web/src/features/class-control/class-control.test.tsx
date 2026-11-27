@@ -62,6 +62,9 @@ function rosterOf(status: RosterStatus, interrupted = false): RosterView {
       maxAttempts: 1,
       warnLimit: 3,
       interruptSecs: 60,
+      answersPublishedAt: null,
+      scoresPublishedAt: null,
+      otherClassesOpen: false,
     },
     students: [
       { studentId: "s1", code: "HS001", fullName: "An", status, attemptsUsed: 1, bestScore: null, interrupted },

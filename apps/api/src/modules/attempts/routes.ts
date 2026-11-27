@@ -2,6 +2,7 @@ import { attemptIdParamsSchema, saveAnswerBodySchema } from "@quiq/shared/studen
 import { ok } from "../../http/response";
 import type { RegisterRoutes } from "../loader";
 import { requireStudentSession } from "../student/student-session";
+import { getAttemptAnswers } from "./answers";
 import { getPaper, getResult, saveAnswer, startAttempt, submitAttempt } from "./service";
 
 // Router /api dùng chung mọi module: kiểm phiên học sinh trong từng route, không router.use() (sẽ chặn cả route khác).
@@ -35,6 +36,13 @@ const registerAttemptRoutes: RegisterRoutes = (router, deps) => {
     const { id } = attemptIdParamsSchema.parse(ctx.params);
     const session = await requireStudentSession(ctx, deps, "read");
     ok(ctx, await getResult(deps, session, id));
+  });
+
+  // Đề + đáp án đúng khi lớp đã công bố (FR-047). Khác PUT cùng đường dẫn (lưu lựa chọn khi đang làm).
+  router.get("/student/attempts/:id/answers", async (ctx) => {
+    const { id } = attemptIdParamsSchema.parse(ctx.params);
+    const session = await requireStudentSession(ctx, deps, "read");
+    ok(ctx, await getAttemptAnswers(deps, session, id));
   });
 };
 

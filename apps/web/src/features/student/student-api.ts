@@ -1,4 +1,5 @@
 import type {
+  AttemptAnswersView,
   AttemptResultView,
   EnterBody,
   ExamPaperView,
@@ -28,6 +29,9 @@ export const studentApi = {
     ),
   result: (attemptId: string) =>
     api.get<AttemptResultView>(`/student/attempts/${attemptId}/result`, STUDENT_REQUEST),
+  /** Đề + đáp án đúng; chỉ có khi lớp đã công bố, ngược lại 409 ANSWERS_NOT_PUBLISHED. */
+  answers: (attemptId: string) =>
+    api.get<AttemptAnswersView>(`/student/attempts/${attemptId}/answers`, STUDENT_REQUEST),
 };
 
 export type ExamStep = "phong-cho" | "lam-bai" | "ket-qua";
