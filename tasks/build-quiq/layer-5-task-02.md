@@ -48,7 +48,7 @@ Web:
 - [ ] Response không có trường PII nào (test khẳng định key); không trả id nội bộ học sinh.
 - [ ] Trường bị khóa vẫn tra cứu được (test).
 - [ ] Cô lập: mã học sinh trùng nhau ở 2 trường → chỉ ra điểm của trường được chọn (test).
-- [ ] Rate-limit: vượt ngưỡng → 429 + `Retry-After` (test với đồng hồ giả); input sai → 400 theo envelope lỗi chung.
+- [ ] Rate-limit: vượt ngưỡng → 429 + `Retry-After` (test với đồng hồ giả); input sai → 422 `VALIDATION` theo envelope lỗi chung (quy ước middleware).
 - [ ] Web: chọn trường/năm, tra cứu, hiện bảng; empty/loading/error/429 (test web); hiển thị được dưới 1024px; không em-dash.
 - [ ] Toàn bộ test cũ xanh.
 

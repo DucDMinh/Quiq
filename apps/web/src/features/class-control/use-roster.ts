@@ -4,6 +4,7 @@ import {
   ROSTER_STREAM_EVENT,
   type CloseClassResult,
   type ExamClassState,
+  type PublishKind,
   type RosterView,
 } from "@quiq/shared/exams";
 import { useCallback, useEffect, useState } from "react";
@@ -21,6 +22,8 @@ const classPath = (t: ExamClassTarget, action: string) =>
 export const classControlApi = {
   dispatch: (t: ExamClassTarget) => api.post<ExamClassState>(classPath(t, "dispatch")),
   close: (t: ExamClassTarget) => api.post<CloseClassResult>(classPath(t, "close")),
+  publish: (t: ExamClassTarget, kind: PublishKind) =>
+    api.post<ExamClassState>(classPath(t, kind === "answers" ? "publish-answers" : "publish-scores")),
   roster: (t: ExamClassTarget) => api.get<RosterView>(classPath(t, "roster")),
   // Cùng origin (rewrite của Next) để cookie HttpOnly đi theo EventSource.
   streamUrl: (t: ExamClassTarget) => `/api${classPath(t, "stream")}`,

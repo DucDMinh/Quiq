@@ -18,6 +18,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { toApiError, useExams } from "@/features/exams/use-exams";
+import { PublishActions } from "./publish-actions";
 import { ConnectionBadge, RosterTable } from "./roster-table";
 import { classControlApi, useRoster, type ExamClassTarget, type RosterConnection } from "./use-roster";
 
@@ -162,6 +163,13 @@ function ClassActions({ target, className, roster, onDone }: ClassActionsProps) 
       >
         {recloseNeeded ? `Thu bài lại lớp ${className}` : `Đóng / Thu bài lớp ${className}`}
       </Button>
+      <PublishActions
+        target={target}
+        className={className}
+        examClass={roster?.examClass ?? null}
+        inProgress={inProgress}
+        onDone={onDone}
+      />
       {status ? (
         <Badge tone={status === "dispatched" ? "info" : status === "closed" ? "danger" : "neutral"}>
           {EXAM_CLASS_STATUS_LABELS[status]}

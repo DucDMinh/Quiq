@@ -4,6 +4,7 @@ import type { AttemptEndReason, AttemptResultView } from "@quiq/shared/student";
 import { useEffect, useState } from "react";
 import type { ApiError } from "@/lib/api-client";
 import { Alert, Badge, Button, Card } from "@/components/ui";
+import { AnswersPanel, useAttemptAnswers } from "./answers-view";
 import { CardSkeleton, LoadError, PortalFrame } from "./portal-frame";
 import { examPath, isSessionError, studentApi, toApiError } from "./student-api";
 
@@ -48,7 +49,7 @@ function useAttemptResult(reloadKey: number): ResultLoad {
 }
 
 function ResultCard({ result }: { result: AttemptResultView }) {
-  const [showAnswers, setShowAnswers] = useState(false);
+  const answers = useAttemptAnswers(result.attemptId);
   return (
     <Card className="flex flex-col gap-6 p-8">
       <div className="flex items-stretch justify-between gap-6">
@@ -78,10 +79,11 @@ function ResultCard({ result }: { result: AttemptResultView }) {
         <p className="text-sm text-ink-muted">
           Đóng trang này thì không có nơi khác để xem lại đáp án.
         </p>
-        <Button onClick={() => setShowAnswers(true)}>Xem đáp án</Button>
+        <Button loading={answers.load.status === "loading"} loadingLabel="Đang tải…" onClick={() => void answers.show()}>
+          Xem đáp án
+        </Button>
       </div>
-      {/* Công bố đáp án là tính năng sau: hiện chưa có đường nào lấy đáp án đúng. */}
-      {showAnswers ? <Alert tone="info">Giáo viên chưa công bố đáp án</Alert> : null}
+      <AnswersPanel load={answers.load} />
       <a href="/" className="self-start text-base font-semibold text-ink-secondary underline">
         Thoát về cổng chính
       </a>
@@ -89,7 +91,7 @@ function ResultCard({ result }: { result: AttemptResultView }) {
   );
 }
 
-/** Kết quả (design-spec §5.3, FR-046, FR-047): điểm lần vừa làm, không hiện câu đã chọn hay đáp án đúng. */
+/** Kết quả (design-spec §5.3, FR-046, FR-047): điểm lần vừa làm; đáp án đúng chỉ khi đã công bố, không hiện câu đã chọn. */
 export function ResultView({ examCode }: { examCode: string }) {
   const [reloadKey, setReloadKey] = useState(0);
   const load = useAttemptResult(reloadKey);

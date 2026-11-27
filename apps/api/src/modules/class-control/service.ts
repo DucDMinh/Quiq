@@ -1,6 +1,6 @@
 import { attempts, classes, examClasses, exams, schools, studentSessions, type DatabaseLike } from "@quiq/db";
-import type { CloseClassResult, ExamClassState } from "@quiq/shared/exams";
-import { and, eq, isNull } from "drizzle-orm";
+import type { CloseClassResult, ExamClassState, PublishKind } from "@quiq/shared/exams";
+import { and, asc, eq, isNull, ne, type SQL } from "drizzle-orm";
 import type { AppDeps } from "../../http/deps";
 import { AppError } from "../../http/errors";
 import { finalizeAttempt, isPastGrace } from "../attempts/finalize";
@@ -22,6 +22,8 @@ export async function loadOwnedExamClass(db: DatabaseLike, scope: TeacherScope, 
       status: examClasses.status,
       dispatchedAt: examClasses.dispatchedAt,
       closedAt: examClasses.closedAt,
+      answersPublishedAt: examClasses.answersPublishedAt,
+      scoresPublishedAt: examClasses.scoresPublishedAt,
       maxAttempts: examClasses.maxAttemptsSnap,
       warnLimit: examClasses.warnLimitSnap,
       interruptSecs: examClasses.interruptSecsSnap,
@@ -40,7 +42,7 @@ export async function loadOwnedExamClass(db: DatabaseLike, scope: TeacherScope, 
     )
     .limit(1);
   if (!row) throw new AppError("NOT_FOUND");
-  return row;
+  return { ...row, otherClassesOpen: await hasUnfinishedClass(db, row.examId, row.id) };
 }
 
 export type OwnedExamClass = Awaited<ReturnType<typeof loadOwnedExamClass>>;
@@ -56,6 +58,9 @@ export function toClassState(row: OwnedExamClass): ExamClassState {
     maxAttempts: row.maxAttempts,
     warnLimit: row.warnLimit,
     interruptSecs: row.interruptSecs,
+    answersPublishedAt: row.answersPublishedAt?.toISOString() ?? null,
+    scoresPublishedAt: row.scoresPublishedAt?.toISOString() ?? null,
+    otherClassesOpen: row.otherClassesOpen,
   };
 }
 
@@ -171,4 +176,96 @@ export async function closeClass(
     examClass: toClassState(await loadOwnedExamClass(deps.db, scope, ref)),
     finalizedAttempts,
   };
+}
+
+/**
+ * Còn lớp nào của bài thi (trừ `exceptExamClassId`) chưa thu bài xong: chưa `closed` (kể cả `draft`), hoặc đã
+ * `closed` mà còn bài đang làm (lần thu bài lỗi giữa chừng). Câu hỏi thuộc BÀI THI, các lớp chỉ khác thứ tự trộn,
+ * nên đáp án công bố cho một lớp là lộ cho mọi lớp còn đang thi (R1).
+ */
+export async function hasUnfinishedClass(
+  db: DatabaseLike,
+  examId: string,
+  exceptExamClassId?: string,
+): Promise<boolean> {
+  const others = (base: SQL | undefined) =>
+    exceptExamClassId ? and(base, ne(examClasses.id, exceptExamClassId)) : base;
+  const open = await db
+    .select({ id: examClasses.id })
+    .from(examClasses)
+    .where(others(and(eq(examClasses.examId, examId), ne(examClasses.status, "closed"))))
+    .limit(1);
+  if (open.length > 0) return true;
+  const running = await db
+    .select({ id: attempts.id })
+    .from(attempts)
+    .innerJoin(examClasses, eq(examClasses.id, attempts.examClassId))
+    .where(others(and(eq(examClasses.examId, examId), eq(attempts.status, "in_progress"))))
+    .limit(1);
+  return running.length > 0;
+}
+
+/**
+ * Lớp đã `closed` mà còn bài đang làm = lần thu bài trước lỗi giữa chừng (học sinh đó vẫn lưu đáp án được).
+ * Lớp đã đóng thì không ai Bắt đầu thêm được, nên kiểm một lần là đủ.
+ */
+async function hasRunningAttempt(db: DatabaseLike, examClassId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: attempts.id })
+    .from(attempts)
+    .where(and(eq(attempts.examClassId, examClassId), eq(attempts.status, "in_progress")))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Ghi mốc công bố nếu chưa có (`IS NULL`): bấm lại, kể cả hai lần cùng lúc, giữ nguyên mốc đầu tiên. */
+async function markPublished(db: DatabaseLike, examClassId: string, kind: PublishKind, now: Date) {
+  const column = kind === "answers" ? examClasses.answersPublishedAt : examClasses.scoresPublishedAt;
+  const updated = await db
+    .update(examClasses)
+    .set(kind === "answers" ? { answersPublishedAt: now } : { scoresPublishedAt: now })
+    .where(and(eq(examClasses.id, examClassId), eq(examClasses.status, "closed"), isNull(column)))
+    .returning({ id: examClasses.id });
+  return updated.length > 0;
+}
+
+/**
+ * Công bố đáp án chỉ khi MỌI lớp của bài đã thu bài xong. Khóa FOR UPDATE mọi hàng exam_classes của bài (theo id
+ * để không deadlock) rồi mới kiểm và ghi: phát đề/thu bài/Bắt đầu ở lớp khác đều đụng hàng của lớp đó nên phải
+ * chờ transaction này, không chen vào giữa lúc kiểm và lúc ghi.
+ */
+async function publishAnswersWhenExamFinished(deps: AppDeps, examClass: OwnedExamClass): Promise<boolean> {
+  return deps.db.transaction(async (tx) => {
+    await tx
+      .select({ id: examClasses.id })
+      .from(examClasses)
+      .where(eq(examClasses.examId, examClass.examId))
+      .orderBy(asc(examClasses.id))
+      .for("update");
+    if (await hasUnfinishedClass(tx, examClass.examId)) throw examError("OTHER_CLASSES_NOT_CLOSED");
+    return markPublished(tx, examClass.id, "answers", deps.clock.now());
+  });
+}
+
+/**
+ * Công bố đáp án hoặc bảng điểm của một lớp (FR-037, FR-038, BR-010): hai mốc độc lập, bấm tay, MỘT CHIỀU.
+ * Lớp phải thu bài XONG (không còn bài đang làm), để học sinh làm xong không chuyền đáp án cho bạn còn đang thi.
+ * Đáp án còn đòi mọi lớp khác của cùng bài thi đã thu bài xong; bảng điểm thì không (không lộ đáp án).
+ */
+export async function publishClass(
+  deps: AppDeps,
+  scope: TeacherScope,
+  ref: ExamClassRef,
+  kind: PublishKind,
+): Promise<ExamClassState> {
+  const examClass = await loadOwnedExamClass(deps.db, scope, ref);
+  if (examClass.status !== "closed" || (await hasRunningAttempt(deps.db, examClass.id))) {
+    throw examError("CLASS_NOT_CLOSED");
+  }
+  const written =
+    kind === "answers"
+      ? await publishAnswersWhenExamFinished(deps, examClass)
+      : await markPublished(deps.db, examClass.id, "scores", deps.clock.now());
+  if (written) deps.realtime?.publish(examClass.id);
+  return toClassState(await loadOwnedExamClass(deps.db, scope, ref));
 }

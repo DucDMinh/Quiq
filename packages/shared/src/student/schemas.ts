@@ -134,3 +134,26 @@ export interface AttemptResultView {
   examCode: string;
   student: StudentIdentity;
 }
+
+export interface AnswerKeyOption {
+  id: string;
+  content: string;
+  isCorrect: boolean;
+}
+
+export interface AnswerKeyQuestion {
+  id: string;
+  content: string;
+  multiSelect: boolean;
+  options: AnswerKeyOption[];
+}
+
+/**
+ * Đề + đáp án đúng của một lần làm đã hoàn thành, theo đúng thứ tự câu/đáp án học sinh đã thấy.
+ * Chỉ trả khi lớp đã công bố đáp án. Cố ý KHÔNG có lựa chọn của học sinh (FR-047).
+ */
+export interface AttemptAnswersView {
+  attemptId: string;
+  examTitle: string;
+  questions: AnswerKeyQuestion[];
+}
